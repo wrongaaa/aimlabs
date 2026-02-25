@@ -65,6 +65,7 @@ public class SettingsDialog extends JDialog {
     private JPanel createGeneralPanel() {
         JPanel p = createFormPanel();
         addSlider(p, "游戏时长(秒)", 10, 300, config.getGameDuration(), v -> config.setGameDuration(v));
+        addDoubleSlider(p, "鼠标灵敏度", 0.1, 5.0, config.getSensitivity(), v -> config.setSensitivity(v));
         addSlider(p, "窗口宽度", 800, 1920, config.getWindowWidth(), v -> config.setWindowWidth(v));
         addSlider(p, "窗口高度", 600, 1080, config.getWindowHeight(), v -> config.setWindowHeight(v));
         addCheckbox(p, "全屏模式", config.isFullscreen(), v -> config.setFullscreen(v));

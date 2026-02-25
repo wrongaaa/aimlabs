@@ -28,6 +28,11 @@ public class GamePanel extends JPanel implements ActionListener {
     private long lastUpdateTime;
     private Runnable onGameEnd;
 
+    // 虚拟光标 (灵敏度控制)
+    private double virtualX, virtualY;
+    private int lastRawX, lastRawY;
+    private boolean hasLastRaw = false;
+
     public GamePanel(GameConfig config) {
         this.config = config;
         this.stats = new GameStats();
@@ -48,35 +53,35 @@ public class GamePanel extends JPanel implements ActionListener {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (!running || currentMode == null) return;
-                currentMode.onMousePress(e.getX(), e.getY(), stats);
-                currentMode.onMouseClick(e.getX(), e.getY(), stats);
+                int vx = (int) virtualX;
+                int vy = (int) virtualY;
+                currentMode.onMousePress(vx, vy, stats);
+                currentMode.onMouseClick(vx, vy, stats);
                 repaint();
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (!running || currentMode == null) return;
-                currentMode.onMouseRelease(e.getX(), e.getY(), stats);
+                currentMode.onMouseRelease((int) virtualX, (int) virtualY, stats);
             }
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                mouseX = e.getX();
-                mouseY = e.getY();
+                updateVirtualCursor(e.getX(), e.getY());
                 if (running && currentMode != null) {
-                    currentMode.onMouseMove(e.getX(), e.getY(), stats);
+                    currentMode.onMouseMove((int) virtualX, (int) virtualY, stats);
                 }
                 repaint();
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                mouseX = e.getX();
-                mouseY = e.getY();
+                updateVirtualCursor(e.getX(), e.getY());
                 if (running && currentMode != null) {
-                    currentMode.onMouseMove(e.getX(), e.getY(), stats);
+                    currentMode.onMouseMove((int) virtualX, (int) virtualY, stats);
                 }
                 repaint();
             }
@@ -84,6 +89,29 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     private int mouseX, mouseY;
+
+    private void updateVirtualCursor(int rawX, int rawY) {
+        if (!running || !hasLastRaw) {
+            // 非游戏状态或首次移动，直接同步
+            virtualX = rawX;
+            virtualY = rawY;
+            lastRawX = rawX;
+            lastRawY = rawY;
+            hasLastRaw = true;
+            mouseX = (int) virtualX;
+            mouseY = (int) virtualY;
+            return;
+        }
+        double sens = config.getSensitivity();
+        double dx = (rawX - lastRawX) * sens;
+        double dy = (rawY - lastRawY) * sens;
+        virtualX = Math.max(0, Math.min(getWidth(), virtualX + dx));
+        virtualY = Math.max(0, Math.min(getHeight(), virtualY + dy));
+        lastRawX = rawX;
+        lastRawY = rawY;
+        mouseX = (int) virtualX;
+        mouseY = (int) virtualY;
+    }
 
     private Cursor createBlankCursor() {
         if (config.isShowCrosshair()) {
@@ -101,6 +129,9 @@ public class GamePanel extends JPanel implements ActionListener {
         this.timeRemaining = config.getGameDuration();
         this.running = true;
         this.lastUpdateTime = System.nanoTime();
+        this.hasLastRaw = false;
+        this.virtualX = getWidth() / 2.0;
+        this.virtualY = getHeight() / 2.0;
         setCursor(createBlankCursor());
         gameTimer.start();
         countdownTimer.start();

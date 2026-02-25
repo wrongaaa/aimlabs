@@ -32,6 +32,7 @@ public class SettingsDialog extends JDialog {
         tabs.addTab("靶标", createTargetPanel());
         tabs.addTab("准星", createCrosshairPanel());
         tabs.addTab("外观", createAppearancePanel());
+        tabs.addTab("3D透视", create3DPanel());
         tabs.addTab("Flick", createFlickPanel());
         tabs.addTab("Track", createTrackPanel());
         tabs.addTab("Speed", createSpeedPanel());
@@ -102,6 +103,15 @@ public class SettingsDialog extends JDialog {
         addColorPicker(p, "背景颜色", config.getBackgroundColor(), c -> config.setBackgroundColor(c));
         addColorPicker(p, "网格颜色", config.getGridColor(), c -> config.setGridColor(c));
         addCheckbox(p, "显示网格", config.isShowGrid(), v -> config.setShowGrid(v));
+        return wrapScroll(p);
+    }
+
+    private JPanel create3DPanel() {
+        JPanel p = createFormPanel();
+        addSlider(p, "视野(FOV)", 200, 1200, (int)config.getFov(), v -> config.setFov(v));
+        addSlider(p, "最大深度", 200, 2000, (int)config.getMaxDepth(), v -> config.setMaxDepth(v));
+        addSlider(p, "世界宽度", 200, 1200, (int)config.getWorldWidth(), v -> config.setWorldWidth(v));
+        addSlider(p, "世界高度", 200, 800, (int)config.getWorldHeight(), v -> config.setWorldHeight(v));
         return wrapScroll(p);
     }
 
@@ -254,6 +264,10 @@ public class SettingsDialog extends JDialog {
         to.setShowCrosshair(from.isShowCrosshair());
         to.setBackgroundColor(from.getBackgroundColor());
         to.setShowGrid(from.isShowGrid());
+        to.setFov(from.getFov());
+        to.setMaxDepth(from.getMaxDepth());
+        to.setWorldWidth(from.getWorldWidth());
+        to.setWorldHeight(from.getWorldHeight());
     }
 
     public boolean isSaved() { return saved; }

@@ -31,8 +31,11 @@ public class TrackingMode implements ModeHandler {
     public void update(double dt, int width, int height) {
         this.width = width;
         this.height = height;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
         for (Target t : targets) {
-            t.update(dt * config.getTrackSpeed() * 60, width, height);
+            t.update3D(dt * config.getTrackSpeed() * 60, worldW, worldH, maxZ);
         }
     }
 
@@ -78,26 +81,33 @@ public class TrackingMode implements ModeHandler {
         int size = config.getTrackTargetSize();
         int count = config.getTrackTargetCount();
         double minDist = size * config.getTargetDensity() * 0.3;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
         for (int i = 0; i < count; i++) {
-            double tx, ty;
+            double tx, ty, tz;
             int attempts = 0;
             do {
-                tx = size + random.nextDouble() * (width - size * 2);
-                ty = 80 + size + random.nextDouble() * (height - size * 2 - 80);
+                tx = -worldW + random.nextDouble() * (2 * worldW);
+                ty = -worldH + random.nextDouble() * (2 * worldH);
+                tz = random.nextDouble() * maxZ;
                 attempts++;
-            } while (isTooClose(tx, ty, minDist) && attempts < 50);
-            Target t = new Target(tx, ty, size, config.getTargetColor());
+            } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
+            Target t = new Target(tx, ty, tz, size, config.getTargetColor());
             double angle = random.nextDouble() * Math.PI * 2;
             double speed = 2 + random.nextDouble() * 2;
             t.setVelocityX(Math.cos(angle) * speed);
             t.setVelocityY(Math.sin(angle) * speed);
+            // Add Z velocity for 3D movement
+            double speedZ = 1 + random.nextDouble() * 2;
+            t.setVelocityZ((random.nextBoolean() ? 1 : -1) * speedZ);
             targets.add(t);
         }
     }
 
-    private boolean isTooClose(double x, double y, double minDist) {
+    private boolean isTooClose(double x, double y, double z, double minDist) {
         for (Target t : targets) {
-            if (t.distanceTo(x, y) < minDist) return true;
+            if (t.distanceTo3D(x, y, z) < minDist) return true;
         }
         return false;
     }

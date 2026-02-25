@@ -81,26 +81,31 @@ public class PrecisionMode implements ModeHandler {
         int maxSize = config.getPrecisionMaxSize();
         int size = minSize + random.nextInt(maxSize - minSize + 1);
         double minDist = size * config.getTargetDensity() * 0.4;
-        double tx, ty;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
+        double tx, ty, tz;
         int attempts = 0;
         do {
-            tx = size + random.nextDouble() * (width - size * 2);
-            ty = 80 + random.nextDouble() * (height - size * 2 - 80);
+            tx = -worldW + random.nextDouble() * (2 * worldW);
+            ty = -worldH + random.nextDouble() * (2 * worldH);
+            // Farther targets are harder in precision mode
+            tz = maxZ * 0.3 + random.nextDouble() * (maxZ * 0.7);
             attempts++;
-        } while (isTooClose(tx, ty, minDist) && attempts < 50);
+        } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
         float ratio = (float)(size - minSize) / Math.max(1, maxSize - minSize);
         Color color = new Color(
             (int)(255 * (1 - ratio * 0.5)),
             (int)(60 + ratio * 195),
             60
         );
-        Target t = new Target(tx, ty, size, color);
+        Target t = new Target(tx, ty, tz, size, color);
         targets.add(t);
     }
 
-    private boolean isTooClose(double x, double y, double minDist) {
+    private boolean isTooClose(double x, double y, double z, double minDist) {
         for (Target t : targets) {
-            if (t.distanceTo(x, y) < minDist) return true;
+            if (t.distanceTo3D(x, y, z) < minDist) return true;
         }
         return false;
     }

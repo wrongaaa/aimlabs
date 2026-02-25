@@ -75,20 +75,24 @@ public class FlickMode implements ModeHandler {
     private void spawnTarget() {
         int size = config.getTargetDefaultSize();
         double minDist = size * config.getTargetDensity() * 0.3;
-        double tx, ty;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
+        double tx, ty, tz;
         int attempts = 0;
         do {
-            tx = size / 2.0 + random.nextDouble() * (width - size);
-            ty = 80 + random.nextDouble() * (height - size - 80);
+            tx = -worldW + random.nextDouble() * (2 * worldW);
+            ty = -worldH + random.nextDouble() * (2 * worldH);
+            tz = random.nextDouble() * maxZ;
             attempts++;
-        } while (isTooClose(tx, ty, minDist) && attempts < 50);
-        Target t = new Target(tx, ty, size, config.getTargetColor());
+        } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
+        Target t = new Target(tx, ty, tz, size, config.getTargetColor());
         targets.add(t);
     }
 
-    private boolean isTooClose(double x, double y, double minDist) {
+    private boolean isTooClose(double x, double y, double z, double minDist) {
         for (Target t : targets) {
-            if (t.distanceTo(x, y) < minDist) return true;
+            if (t.distanceTo3D(x, y, z) < minDist) return true;
         }
         return false;
     }

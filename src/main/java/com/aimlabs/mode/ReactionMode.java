@@ -106,22 +106,26 @@ public class ReactionMode implements ModeHandler {
         int size = config.getReactionTargetSize();
         int count = config.getReactionTargetCount();
         double minDist = size * config.getTargetDensity() * 0.3;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
         for (int i = 0; i < count; i++) {
-            double tx, ty;
+            double tx, ty, tz;
             int attempts = 0;
             do {
-                tx = size / 2.0 + random.nextDouble() * (width - size);
-                ty = 80 + random.nextDouble() * (height - size - 80);
+                tx = -worldW + random.nextDouble() * (2 * worldW);
+                ty = -worldH + random.nextDouble() * (2 * worldH);
+                tz = random.nextDouble() * maxZ;
                 attempts++;
-            } while (isTooClose(tx, ty, minDist) && attempts < 50);
-            Target t = new Target(tx, ty, size, new Color(255, 200, 0));
+            } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
+            Target t = new Target(tx, ty, tz, size, new Color(255, 200, 0));
             targets.add(t);
         }
     }
 
-    private boolean isTooClose(double x, double y, double minDist) {
+    private boolean isTooClose(double x, double y, double z, double minDist) {
         for (Target t : targets) {
-            if (t.distanceTo(x, y) < minDist) return true;
+            if (t.distanceTo3D(x, y, z) < minDist) return true;
         }
         return false;
     }

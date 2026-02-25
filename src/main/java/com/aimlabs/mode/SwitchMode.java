@@ -88,15 +88,19 @@ public class SwitchMode implements ModeHandler {
 
     private void spawnSingleTarget(boolean highlight) {
         int size = config.getSwitchTargetSize();
-        double tx, ty;
+        double worldW = config.getWorldWidth();
+        double worldH = config.getWorldHeight();
+        double maxZ = config.getMaxDepth();
+        double tx, ty, tz;
         boolean overlapping;
         int attempts = 0;
         do {
-            tx = size / 2.0 + random.nextDouble() * (width - size);
-            ty = 80 + random.nextDouble() * (height - size - 80);
+            tx = -worldW + random.nextDouble() * (2 * worldW);
+            ty = -worldH + random.nextDouble() * (2 * worldH);
+            tz = random.nextDouble() * maxZ;
             overlapping = false;
             for (Target t : targets) {
-                if (t.distanceTo(tx, ty) < size * config.getTargetDensity() * 0.3) {
+                if (t.distanceTo3D(tx, ty, tz) < size * config.getTargetDensity() * 0.3) {
                     overlapping = true;
                     break;
                 }
@@ -105,7 +109,7 @@ public class SwitchMode implements ModeHandler {
         } while (overlapping && attempts < 50);
 
         Color color = new Color(100, 100, 120);
-        Target t = new Target(tx, ty, size, color);
+        Target t = new Target(tx, ty, tz, size, color);
         t.setHighlighted(highlight);
         if (highlight) {
             t.setColor(new Color(255, 200, 0));

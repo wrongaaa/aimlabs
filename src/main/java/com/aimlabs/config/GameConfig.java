@@ -40,6 +40,12 @@ public class GameConfig implements Serializable {
     // 全局靶标分布密度 (1=紧密 10=稀疏，控制靶标间最小距离倍率)
     private double targetDensity = 5.0;
 
+    // 3D透视设置
+    private double fov = 500.0;        // 视野距离(越大越平，越小透视越强)
+    private double maxDepth = 800.0;   // 最大深度
+    private double worldWidth = 600.0; // 3D世界宽度(半宽)
+    private double worldHeight = 400.0;// 3D世界高度(半高)
+
     // 各模式专属设置
     // Flick
     private int flickTargetCount = 6;
@@ -127,6 +133,15 @@ public class GameConfig implements Serializable {
 
     public double getTargetDensity() { return targetDensity; }
     public void setTargetDensity(double v) { this.targetDensity = v; }
+
+    public double getFov() { return fov; }
+    public void setFov(double v) { this.fov = v; }
+    public double getMaxDepth() { return maxDepth; }
+    public void setMaxDepth(double v) { this.maxDepth = v; }
+    public double getWorldWidth() { return worldWidth; }
+    public void setWorldWidth(double v) { this.worldWidth = v; }
+    public double getWorldHeight() { return worldHeight; }
+    public void setWorldHeight(double v) { this.worldHeight = v; }
 
     public int getFlickTargetCount() { return flickTargetCount; }
     public void setFlickTargetCount(int v) { this.flickTargetCount = v; }
@@ -223,6 +238,10 @@ public class GameConfig implements Serializable {
         props.setProperty("switchTargetCount", String.valueOf(switchTargetCount));
         props.setProperty("switchTargetSize", String.valueOf(switchTargetSize));
         props.setProperty("sensitivity", String.valueOf(sensitivity));
+        props.setProperty("fov", String.valueOf(fov));
+        props.setProperty("maxDepth", String.valueOf(maxDepth));
+        props.setProperty("worldWidth", String.valueOf(worldWidth));
+        props.setProperty("worldHeight", String.valueOf(worldHeight));
         props.setProperty("soundEnabled", String.valueOf(soundEnabled));
         props.setProperty("soundVolume", String.valueOf(soundVolume));
         props.setProperty("showAccuracy", String.valueOf(showAccuracy));
@@ -279,6 +298,10 @@ public class GameConfig implements Serializable {
             switchTargetCount = Integer.parseInt(props.getProperty("switchTargetCount", "6"));
             switchTargetSize = Integer.parseInt(props.getProperty("switchTargetSize", "35"));
             sensitivity = Double.parseDouble(props.getProperty("sensitivity", "1.0"));
+            fov = Double.parseDouble(props.getProperty("fov", "500.0"));
+            maxDepth = Double.parseDouble(props.getProperty("maxDepth", "800.0"));
+            worldWidth = Double.parseDouble(props.getProperty("worldWidth", "600.0"));
+            worldHeight = Double.parseDouble(props.getProperty("worldHeight", "400.0"));
             soundEnabled = Boolean.parseBoolean(props.getProperty("soundEnabled", "true"));
             soundVolume = Float.parseFloat(props.getProperty("soundVolume", "0.7"));
             showAccuracy = Boolean.parseBoolean(props.getProperty("showAccuracy", "true"));

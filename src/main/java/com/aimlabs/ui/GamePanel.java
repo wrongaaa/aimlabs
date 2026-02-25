@@ -11,6 +11,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -185,11 +187,9 @@ public class GamePanel extends JPanel implements ActionListener {
         g2d.setColor(config.getBackgroundColor());
         g2d.fillRect(0, 0, w, h);
 
-        // 网格
+        // 3D透视网格
         if (config.isShowGrid()) {
-            g2d.setColor(config.getGridColor());
-            for (int x = 0; x < w; x += 50) g2d.drawLine(x, 60, x, h);
-            for (int y = 60; y < h; y += 50) g2d.drawLine(0, y, w, y);
+            drawPerspectiveGrid(g2d, w, h);
         }
 
         // HUD 栏
@@ -233,10 +233,28 @@ public class GamePanel extends JPanel implements ActionListener {
                 g2d.drawString(timeText, w - tw - 20, 38);
             }
 
-            // 靶标
+            // 靶标 - 3D投影 + 深度排序
             List<Target> targets = currentMode.getTargets();
+            double fov = config.getFov();
+            double maxZ = config.getMaxDepth();
+
+            // 投影所有靶标
             for (Target t : targets) {
-                drawTarget(g2d, t);
+                t.project(w, h, fov);
+            }
+
+            // 按深度排序(远的先画)
+            List<Target> sorted = new ArrayList<>(targets);
+            sorted.sort(Comparator.comparingDouble(Target::getZ).reversed());
+
+            // 画阴影
+            for (Target t : sorted) {
+                drawTargetShadow(g2d, t, maxZ);
+            }
+
+            // 画靶标
+            for (Target t : sorted) {
+                drawTarget(g2d, t, maxZ);
             }
 
             // 准星
@@ -255,32 +273,58 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
 
-    private void drawTarget(Graphics2D g2d, Target t) {
-        double x = t.getX();
-        double y = t.getY();
-        double size = t.getSize();
+    private void drawTargetShadow(Graphics2D g2d, Target t, double maxZ) {
+        double sx = t.getScreenX();
+        double sy = t.getScreenY();
+        double ss = t.getScreenSize();
+        float dim = t.getDepthDim(maxZ);
+        int alpha = (int)(40 * dim);
+        g2d.setColor(new Color(0, 0, 0, Math.max(5, alpha)));
+        double shadowSize = ss * 1.3;
+        g2d.fill(new Ellipse2D.Double(sx - shadowSize/2 + 4, sy - shadowSize/2 + 4, shadowSize, shadowSize));
+    }
 
-        // 外圈光晕
+    private void drawTarget(Graphics2D g2d, Target t, double maxZ) {
+        double sx = t.getScreenX();
+        double sy = t.getScreenY();
+        double ss = t.getScreenSize();
+        float dim = t.getDepthDim(maxZ);
+
+        // 外圈光晕 (高亮靶标)
         if (t.isHighlighted()) {
-            g2d.setColor(new Color(255, 200, 0, 50));
-            g2d.fill(new Ellipse2D.Double(x - size * 0.8, y - size * 0.8, size * 1.6, size * 1.6));
+            int glowAlpha = (int)(50 * dim);
+            g2d.setColor(new Color(255, 200, 0, Math.max(10, glowAlpha)));
+            double glowSize = ss * 1.6;
+            g2d.fill(new Ellipse2D.Double(sx - glowSize/2, sy - glowSize/2, glowSize, glowSize));
         }
 
-        // 主体
-        g2d.setColor(t.getColor());
-        g2d.fill(t.getShape());
+        // 主体 - 使用深度调暗颜色
+        Color depthColor = t.getDepthColor(maxZ);
+        g2d.setColor(depthColor);
+        Ellipse2D.Double shape = t.getScreenShape();
+        g2d.fill(shape);
 
         // 边框
-        Color borderColor = t.isHighlighted() ? new Color(255, 255, 100) : config.getTargetBorderColor();
+        Color borderColor;
+        if (t.isHighlighted()) {
+            borderColor = new Color(
+                (int)(255 * dim), (int)(255 * dim), (int)(100 * dim));
+        } else {
+            Color bc = config.getTargetBorderColor();
+            borderColor = new Color(
+                (int)(bc.getRed() * dim), (int)(bc.getGreen() * dim), (int)(bc.getBlue() * dim));
+        }
         g2d.setColor(borderColor);
-        g2d.setStroke(new BasicStroke(2));
-        g2d.draw(t.getShape());
+        float strokeW = Math.max(1, 2 * dim);
+        g2d.setStroke(new BasicStroke(strokeW));
+        g2d.draw(shape);
 
-        // 内圈
-        if (size > 15) {
-            g2d.setColor(new Color(255, 255, 255, 80));
-            double innerSize = size * 0.4;
-            g2d.fill(new Ellipse2D.Double(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize));
+        // 内圈 (近处才显示)
+        if (ss > 12 && dim > 0.5f) {
+            int innerAlpha = (int)(80 * dim);
+            g2d.setColor(new Color(255, 255, 255, Math.max(10, innerAlpha)));
+            double innerSize = ss * 0.4;
+            g2d.fill(new Ellipse2D.Double(sx - innerSize/2, sy - innerSize/2, innerSize, innerSize));
         }
 
         // 生命周期指示器
@@ -288,14 +332,66 @@ public class GamePanel extends JPanel implements ActionListener {
             long elapsed = System.currentTimeMillis() - t.getSpawnTime();
             double ratio = 1.0 - (double) elapsed / t.getLifetime();
             ratio = Math.max(0, Math.min(1, ratio));
-            g2d.setColor(new Color(255, 255, 255, 150));
-            g2d.setStroke(new BasicStroke(3));
+            int arcAlpha = (int)(150 * dim);
+            g2d.setColor(new Color(255, 255, 255, Math.max(10, arcAlpha)));
+            g2d.setStroke(new BasicStroke(Math.max(1, 3 * dim)));
             int arcAngle = (int) (360 * ratio);
-            g2d.drawArc((int)(x - size/2 - 3), (int)(y - size/2 - 3),
-                (int)(size + 6), (int)(size + 6), 90, arcAngle);
+            g2d.drawArc((int)(sx - ss/2 - 3), (int)(sy - ss/2 - 3),
+                (int)(ss + 6), (int)(ss + 6), 90, arcAngle);
         }
 
         g2d.setStroke(new BasicStroke(1));
+    }
+
+    private void drawPerspectiveGrid(Graphics2D g2d, int w, int h) {
+        double fov = config.getFov();
+        double maxZ = config.getMaxDepth();
+        double cx = w / 2.0;
+        double cy = h / 2.0 + 30;
+
+        // 画多层深度线 (从远到近)
+        int layers = 8;
+        for (int i = layers; i >= 0; i--) {
+            double z = maxZ * i / layers;
+            double scale = fov / (fov + z);
+            float dim = Math.max(0.15f, 1.0f - (float)(z / (maxZ * 1.5)));
+
+            Color gc = config.getGridColor();
+            int r = (int)(gc.getRed() * dim);
+            int gr = (int)(gc.getGreen() * dim);
+            int b = (int)(gc.getBlue() * dim);
+            g2d.setColor(new Color(r, gr, b));
+
+            // 水平线
+            double halfW = config.getWorldWidth() * scale;
+            double halfH = config.getWorldHeight() * scale;
+            double ly = cy - halfH;
+            double ly2 = cy + halfH;
+            g2d.drawLine((int)(cx - halfW), (int)ly, (int)(cx + halfW), (int)ly);
+            g2d.drawLine((int)(cx - halfW), (int)ly2, (int)(cx + halfW), (int)ly2);
+
+            // 垂直线
+            double lx = cx - halfW;
+            double lx2 = cx + halfW;
+            g2d.drawLine((int)lx, (int)ly, (int)lx, (int)ly2);
+            g2d.drawLine((int)lx2, (int)ly, (int)lx2, (int)ly2);
+        }
+
+        // 汇聚线 (连接近处角到远处角)
+        double nearScale = fov / fov; // z=0
+        double farScale = fov / (fov + maxZ);
+        double nearW = config.getWorldWidth() * nearScale;
+        double nearH = config.getWorldHeight() * nearScale;
+        double farW = config.getWorldWidth() * farScale;
+        double farH = config.getWorldHeight() * farScale;
+
+        Color gc = config.getGridColor();
+        g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2));
+        // 四条汇聚线
+        g2d.drawLine((int)(cx - nearW), (int)(cy - nearH), (int)(cx - farW), (int)(cy - farH));
+        g2d.drawLine((int)(cx + nearW), (int)(cy - nearH), (int)(cx + farW), (int)(cy - farH));
+        g2d.drawLine((int)(cx - nearW), (int)(cy + nearH), (int)(cx - farW), (int)(cy + farH));
+        g2d.drawLine((int)(cx + nearW), (int)(cy + nearH), (int)(cx + farW), (int)(cy + farH));
     }
 
     private void drawCrosshair(Graphics2D g2d, int mx, int my) {

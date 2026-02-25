@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: src-repo
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -18,26 +20,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Compile
-        shell: bash
-        run: |
-          mkdir -p build out
-          find src -name "*.java" > sources.txt
-          javac -encoding UTF-8 -d build @sources.txt
-          rm sources.txt
-
-      - name: Create JAR
-        shell: bash
-        run: jar cfm out/AimLabs.jar MANIFEST.MF -C build .
-
-      - name: Package EXE with jpackage
+      - name: Compile and Package
         shell: cmd
         run: |
-          jpackage --input out --main-jar AimLabs.jar --name AimLabs --type app-image --dest out\dist --java-options "-Xmx512m"
+          mkdir C:\app
+          xcopy /E /I src-repo C:\app\repo
+          cd /d C:\app\repo
+          mkdir build
+          mkdir out
+          dir /s /b src\*.java > sources.txt
+          javac -encoding UTF-8 -d build @sources.txt
+          jar cfm out\AimLabs.jar MANIFEST.MF -C build .
+          jpackage --input out --main-jar AimLabs.jar --name AimLabs --type app-image --dest C:\app\dist --java-options "-Xmx512m"
 
       - name: Zip release
         shell: pwsh
-        run: Compress-Archive -Path out\dist\AimLabs\* -DestinationPath AimLabs-windows.zip
+        run: Compress-Archive -Path C:\app\dist\AimLabs\* -DestinationPath AimLabs-windows.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

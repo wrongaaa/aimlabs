@@ -92,8 +92,11 @@ public class SettingsDialog extends JDialog {
     private JPanel createCrosshairPanel() {
         JPanel p = createFormPanel();
         addCheckbox(p, "显示准星", config.isShowCrosshair(), v -> config.setShowCrosshair(v));
-        addSlider(p, "准星大小", 5, 50, config.getCrosshairSize(), v -> config.setCrosshairSize(v));
-        addSlider(p, "准星粗细", 1, 5, config.getCrosshairThickness(), v -> config.setCrosshairThickness(v));
+        addSlider(p, "线段长度", 1, 20, config.getCrosshairSize(), v -> config.setCrosshairSize(v));
+        addSlider(p, "线段粗细", 1, 5, config.getCrosshairThickness(), v -> config.setCrosshairThickness(v));
+        addSlider(p, "中心间隙", 0, 15, config.getCrosshairGap(), v -> config.setCrosshairGap(v));
+        addSlider(p, "描边粗细", 0, 3, config.getCrosshairOutline(), v -> config.setCrosshairOutline(v));
+        addCheckbox(p, "中心点", config.isCrosshairDot(), v -> config.setCrosshairDot(v));
         addColorPicker(p, "准星颜色", config.getCrosshairColor(), c -> config.setCrosshairColor(c));
         return wrapScroll(p);
     }
@@ -112,6 +115,7 @@ public class SettingsDialog extends JDialog {
         addSlider(p, "最大深度", 200, 2000, (int)config.getMaxDepth(), v -> config.setMaxDepth(v));
         addSlider(p, "世界宽度", 200, 1200, (int)config.getWorldWidth(), v -> config.setWorldWidth(v));
         addSlider(p, "世界高度", 200, 800, (int)config.getWorldHeight(), v -> config.setWorldHeight(v));
+        addDoubleSlider(p, "Z轴分散度", 0.0, 1.0, config.getZSpread(), v -> config.setZSpread(v));
         return wrapScroll(p);
     }
 

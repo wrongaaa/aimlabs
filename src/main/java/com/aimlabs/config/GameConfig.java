@@ -23,11 +23,14 @@ public class GameConfig implements Serializable {
     private Color targetBorderColor = new Color(200, 40, 40);
     private Color targetHitColor = new Color(60, 255, 60);
 
-    // 准星设置
-    private int crosshairSize = 20;
+    // 准星设置 - CS风格
+    private int crosshairSize = 5;       // 线段长度
     private int crosshairThickness = 2;
-    private Color crosshairColor = Color.WHITE;
+    private int crosshairGap = 3;        // 中心间隙
+    private Color crosshairColor = new Color(0, 255, 0);
     private boolean showCrosshair = true;
+    private boolean crosshairDot = true; // 中心点
+    private int crosshairOutline = 1;    // 描边粗细(0=无)
 
     // 背景设置
     private Color backgroundColor = new Color(30, 30, 40);
@@ -45,6 +48,7 @@ public class GameConfig implements Serializable {
     private double maxDepth = 1200.0;  // 最大深度
     private double worldWidth = 800.0; // 3D世界宽度(半宽)
     private double worldHeight = 500.0;// 3D世界高度(半高)
+    private double zSpread = 0.15;     // Z轴分布密度(0.01=几乎同平面, 1.0=全深度分散)
 
     // 各模式专属设置
     // Flick
@@ -120,6 +124,12 @@ public class GameConfig implements Serializable {
     public void setCrosshairColor(Color v) { this.crosshairColor = v; }
     public boolean isShowCrosshair() { return showCrosshair; }
     public void setShowCrosshair(boolean v) { this.showCrosshair = v; }
+    public int getCrosshairGap() { return crosshairGap; }
+    public void setCrosshairGap(int v) { this.crosshairGap = v; }
+    public boolean isCrosshairDot() { return crosshairDot; }
+    public void setCrosshairDot(boolean v) { this.crosshairDot = v; }
+    public int getCrosshairOutline() { return crosshairOutline; }
+    public void setCrosshairOutline(int v) { this.crosshairOutline = v; }
 
     public Color getBackgroundColor() { return backgroundColor; }
     public void setBackgroundColor(Color v) { this.backgroundColor = v; }
@@ -142,6 +152,8 @@ public class GameConfig implements Serializable {
     public void setWorldWidth(double v) { this.worldWidth = v; }
     public double getWorldHeight() { return worldHeight; }
     public void setWorldHeight(double v) { this.worldHeight = v; }
+    public double getZSpread() { return zSpread; }
+    public void setZSpread(double v) { this.zSpread = v; }
 
     public int getFlickTargetCount() { return flickTargetCount; }
     public void setFlickTargetCount(int v) { this.flickTargetCount = v; }
@@ -215,6 +227,9 @@ public class GameConfig implements Serializable {
         props.setProperty("crosshairThickness", String.valueOf(crosshairThickness));
         props.setProperty("crosshairColor", colorToHex(crosshairColor));
         props.setProperty("showCrosshair", String.valueOf(showCrosshair));
+        props.setProperty("crosshairGap", String.valueOf(crosshairGap));
+        props.setProperty("crosshairDot", String.valueOf(crosshairDot));
+        props.setProperty("crosshairOutline", String.valueOf(crosshairOutline));
         props.setProperty("backgroundColor", colorToHex(backgroundColor));
         props.setProperty("gridColor", colorToHex(gridColor));
         props.setProperty("showGrid", String.valueOf(showGrid));
@@ -242,6 +257,7 @@ public class GameConfig implements Serializable {
         props.setProperty("maxDepth", String.valueOf(maxDepth));
         props.setProperty("worldWidth", String.valueOf(worldWidth));
         props.setProperty("worldHeight", String.valueOf(worldHeight));
+        props.setProperty("zSpread", String.valueOf(zSpread));
         props.setProperty("soundEnabled", String.valueOf(soundEnabled));
         props.setProperty("soundVolume", String.valueOf(soundVolume));
         props.setProperty("showAccuracy", String.valueOf(showAccuracy));
@@ -271,10 +287,13 @@ public class GameConfig implements Serializable {
             targetColor = hexToColor(props.getProperty("targetColor", "#FF3C3C"));
             targetBorderColor = hexToColor(props.getProperty("targetBorderColor", "#C82828"));
             targetHitColor = hexToColor(props.getProperty("targetHitColor", "#3CFF3C"));
-            crosshairSize = Integer.parseInt(props.getProperty("crosshairSize", "20"));
+            crosshairSize = Integer.parseInt(props.getProperty("crosshairSize", "5"));
             crosshairThickness = Integer.parseInt(props.getProperty("crosshairThickness", "2"));
-            crosshairColor = hexToColor(props.getProperty("crosshairColor", "#FFFFFF"));
+            crosshairColor = hexToColor(props.getProperty("crosshairColor", "#00FF00"));
             showCrosshair = Boolean.parseBoolean(props.getProperty("showCrosshair", "true"));
+            crosshairGap = Integer.parseInt(props.getProperty("crosshairGap", "3"));
+            crosshairDot = Boolean.parseBoolean(props.getProperty("crosshairDot", "true"));
+            crosshairOutline = Integer.parseInt(props.getProperty("crosshairOutline", "1"));
             backgroundColor = hexToColor(props.getProperty("backgroundColor", "#1E1E28"));
             gridColor = hexToColor(props.getProperty("gridColor", "#323241"));
             showGrid = Boolean.parseBoolean(props.getProperty("showGrid", "true"));
@@ -302,6 +321,7 @@ public class GameConfig implements Serializable {
             maxDepth = Double.parseDouble(props.getProperty("maxDepth", "1200.0"));
             worldWidth = Double.parseDouble(props.getProperty("worldWidth", "800.0"));
             worldHeight = Double.parseDouble(props.getProperty("worldHeight", "500.0"));
+            zSpread = Double.parseDouble(props.getProperty("zSpread", "0.15"));
             soundEnabled = Boolean.parseBoolean(props.getProperty("soundEnabled", "true"));
             soundVolume = Float.parseFloat(props.getProperty("soundVolume", "0.7"));
             showAccuracy = Boolean.parseBoolean(props.getProperty("showAccuracy", "true"));

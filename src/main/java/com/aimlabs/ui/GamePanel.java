@@ -515,18 +515,41 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     private void drawCrosshair(Graphics2D g2d, int mx, int my) {
-        int size = config.getCrosshairSize();
+        int len = config.getCrosshairSize();
         int thick = config.getCrosshairThickness();
-        g2d.setColor(config.getCrosshairColor());
-        g2d.setStroke(new BasicStroke(thick));
-        // 十字线（中间留空）
-        int gap = 4;
-        g2d.drawLine(mx - size, my, mx - gap, my);
-        g2d.drawLine(mx + gap, my, mx + size, my);
-        g2d.drawLine(mx, my - size, mx, my - gap);
-        g2d.drawLine(mx, my + gap, mx, my + size);
+        int gap = config.getCrosshairGap();
+        int outline = config.getCrosshairOutline();
+        Color color = config.getCrosshairColor();
+
+        // CS风格准星: 4条短线段 + 中心间隙 + 可选描边 + 可选中心点
+        // 描边(黑色外框让准星在任何背景上都清晰)
+        if (outline > 0) {
+            g2d.setColor(new Color(0, 0, 0, 200));
+            g2d.setStroke(new BasicStroke(thick + outline * 2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+            g2d.drawLine(mx - gap - len, my, mx - gap, my);
+            g2d.drawLine(mx + gap, my, mx + gap + len, my);
+            g2d.drawLine(mx, my - gap - len, mx, my - gap);
+            g2d.drawLine(mx, my + gap, mx, my + gap + len);
+        }
+
+        // 主体线段
+        g2d.setColor(color);
+        g2d.setStroke(new BasicStroke(thick, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+        g2d.drawLine(mx - gap - len, my, mx - gap, my);
+        g2d.drawLine(mx + gap, my, mx + gap + len, my);
+        g2d.drawLine(mx, my - gap - len, mx, my - gap);
+        g2d.drawLine(mx, my + gap, mx, my + gap + len);
+
         // 中心点
-        g2d.fillOval(mx - 1, my - 1, 2, 2);
+        if (config.isCrosshairDot()) {
+            if (outline > 0) {
+                g2d.setColor(new Color(0, 0, 0, 200));
+                g2d.fillRect(mx - 1 - outline, my - 1 - outline, 2 + outline*2, 2 + outline*2);
+            }
+            g2d.setColor(color);
+            g2d.fillRect(mx - 1, my - 1, 2, 2);
+        }
+
         g2d.setStroke(new BasicStroke(1));
     }
 

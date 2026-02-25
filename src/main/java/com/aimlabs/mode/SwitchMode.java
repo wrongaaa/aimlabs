@@ -91,13 +91,15 @@ public class SwitchMode implements ModeHandler {
         double worldW = config.getWorldWidth();
         double worldH = config.getWorldHeight();
         double maxZ = config.getMaxDepth();
+        double zCenter = maxZ * 0.4;
+        double zRange = maxZ * config.getZSpread();
         double tx, ty, tz;
         boolean overlapping;
         int attempts = 0;
         do {
             tx = -worldW + random.nextDouble() * (2 * worldW);
             ty = -worldH + random.nextDouble() * (2 * worldH);
-            tz = random.nextDouble() * maxZ;
+            tz = Math.max(0, Math.min(maxZ, zCenter + (random.nextDouble() - 0.5) * 2 * zRange));
             overlapping = false;
             for (Target t : targets) {
                 if (t.distanceTo3D(tx, ty, tz) < size * config.getTargetDensity() * 0.3) {

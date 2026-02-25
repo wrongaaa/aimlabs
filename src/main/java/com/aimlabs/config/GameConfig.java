@@ -41,10 +41,10 @@ public class GameConfig implements Serializable {
     private double targetDensity = 5.0;
 
     // 3D透视设置
-    private double fov = 500.0;        // 视野距离(越大越平，越小透视越强)
-    private double maxDepth = 800.0;   // 最大深度
-    private double worldWidth = 600.0; // 3D世界宽度(半宽)
-    private double worldHeight = 400.0;// 3D世界高度(半高)
+    private double fov = 280.0;        // 视野距离(越大越平，越小透视越强)
+    private double maxDepth = 1200.0;  // 最大深度
+    private double worldWidth = 800.0; // 3D世界宽度(半宽)
+    private double worldHeight = 500.0;// 3D世界高度(半高)
 
     // 各模式专属设置
     // Flick
@@ -298,10 +298,10 @@ public class GameConfig implements Serializable {
             switchTargetCount = Integer.parseInt(props.getProperty("switchTargetCount", "6"));
             switchTargetSize = Integer.parseInt(props.getProperty("switchTargetSize", "35"));
             sensitivity = Double.parseDouble(props.getProperty("sensitivity", "1.0"));
-            fov = Double.parseDouble(props.getProperty("fov", "500.0"));
-            maxDepth = Double.parseDouble(props.getProperty("maxDepth", "800.0"));
-            worldWidth = Double.parseDouble(props.getProperty("worldWidth", "600.0"));
-            worldHeight = Double.parseDouble(props.getProperty("worldHeight", "400.0"));
+            fov = Double.parseDouble(props.getProperty("fov", "280.0"));
+            maxDepth = Double.parseDouble(props.getProperty("maxDepth", "1200.0"));
+            worldWidth = Double.parseDouble(props.getProperty("worldWidth", "800.0"));
+            worldHeight = Double.parseDouble(props.getProperty("worldHeight", "500.0"));
             soundEnabled = Boolean.parseBoolean(props.getProperty("soundEnabled", "true"));
             soundVolume = Float.parseFloat(props.getProperty("soundVolume", "0.7"));
             showAccuracy = Boolean.parseBoolean(props.getProperty("showAccuracy", "true"));

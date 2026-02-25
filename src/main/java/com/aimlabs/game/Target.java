@@ -119,7 +119,9 @@ public class Target {
     /** 根据深度计算暗化系数 (0~1, 越远越暗) */
     public float getDepthDim(double maxZ) {
         if (maxZ <= 0) return 1.0f;
-        return Math.max(0.3f, 1.0f - (float)(z / (maxZ * 1.5)));
+        float ratio = (float)(z / maxZ);
+        // 用平方曲线让远处暗得更快
+        return Math.max(0.15f, 1.0f - ratio * ratio * 0.85f);
     }
 
     /** 获取深度调暗后的颜色 */

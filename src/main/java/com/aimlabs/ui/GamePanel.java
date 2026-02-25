@@ -10,6 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -183,8 +184,27 @@ public class GamePanel extends JPanel implements ActionListener {
         int w = getWidth();
         int h = getHeight();
 
-        // 背景
-        g2d.setColor(config.getBackgroundColor());
+        // 背景 - 径向渐变增强深度感
+        Color bg = config.getBackgroundColor();
+        g2d.setColor(bg);
+        g2d.fillRect(0, 0, w, h);
+        // 中心亮边缘暗的径向渐变
+        double cx = w / 2.0;
+        double cy = h / 2.0 + 30;
+        float radius = Math.max(w, h) * 0.8f;
+        Color centerGlow = new Color(
+            Math.min(255, bg.getRed() + 25),
+            Math.min(255, bg.getGreen() + 25),
+            Math.min(255, bg.getBlue() + 35));
+        Color edgeDark = new Color(
+            Math.max(0, bg.getRed() - 15),
+            Math.max(0, bg.getGreen() - 15),
+            Math.max(0, bg.getBlue() - 10));
+        RadialGradientPaint bgGrad = new RadialGradientPaint(
+            new Point2D.Double(cx, cy), radius,
+            new float[]{0f, 0.5f, 1f},
+            new Color[]{centerGlow, bg, edgeDark});
+        g2d.setPaint(bgGrad);
         g2d.fillRect(0, 0, w, h);
 
         // 3D透视网格
@@ -278,10 +298,26 @@ public class GamePanel extends JPanel implements ActionListener {
         double sy = t.getScreenY();
         double ss = t.getScreenSize();
         float dim = t.getDepthDim(maxZ);
-        int alpha = (int)(40 * dim);
-        g2d.setColor(new Color(0, 0, 0, Math.max(5, alpha)));
-        double shadowSize = ss * 1.3;
-        g2d.fill(new Ellipse2D.Double(sx - shadowSize/2 + 4, sy - shadowSize/2 + 4, shadowSize, shadowSize));
+        // 远处阴影更大更模糊，近处更紧凑
+        double depthRatio = t.getZ() / Math.max(1, maxZ);
+        double shadowOffX = 3 + depthRatio * 8;
+        double shadowOffY = 3 + depthRatio * 8;
+        double shadowScale = 1.2 + depthRatio * 0.5;
+        int alpha = (int)(60 * dim);
+        double shadowSize = ss * shadowScale;
+        // 模糊阴影用渐变
+        RadialGradientPaint shadowPaint = new RadialGradientPaint(
+            new Point2D.Double(sx + shadowOffX, sy + shadowOffY),
+            (float)(shadowSize / 2 + 2),
+            new float[]{0f, 0.6f, 1f},
+            new Color[]{
+                new Color(0, 0, 0, Math.min(255, Math.max(5, alpha))),
+                new Color(0, 0, 0, Math.min(255, Math.max(2, alpha / 2))),
+                new Color(0, 0, 0, 0)});
+        g2d.setPaint(shadowPaint);
+        g2d.fill(new Ellipse2D.Double(
+            sx + shadowOffX - shadowSize/2, sy + shadowOffY - shadowSize/2,
+            shadowSize, shadowSize));
     }
 
     private void drawTarget(Graphics2D g2d, Target t, double maxZ) {
@@ -289,42 +325,114 @@ public class GamePanel extends JPanel implements ActionListener {
         double sy = t.getScreenY();
         double ss = t.getScreenSize();
         float dim = t.getDepthDim(maxZ);
+        double r = ss / 2.0;
 
         // 外圈光晕 (高亮靶标)
         if (t.isHighlighted()) {
-            int glowAlpha = (int)(50 * dim);
-            g2d.setColor(new Color(255, 200, 0, Math.max(10, glowAlpha)));
-            double glowSize = ss * 1.6;
+            int glowAlpha = (int)(70 * dim);
+            RadialGradientPaint glowPaint = new RadialGradientPaint(
+                new Point2D.Double(sx, sy), (float)(r * 1.8),
+                new float[]{0.4f, 0.7f, 1f},
+                new Color[]{
+                    new Color(255, 200, 0, Math.max(5, glowAlpha)),
+                    new Color(255, 150, 0, Math.max(2, glowAlpha / 3)),
+                    new Color(255, 100, 0, 0)});
+            g2d.setPaint(glowPaint);
+            double glowSize = ss * 1.8;
             g2d.fill(new Ellipse2D.Double(sx - glowSize/2, sy - glowSize/2, glowSize, glowSize));
         }
 
-        // 主体 - 使用深度调暗颜色
-        Color depthColor = t.getDepthColor(maxZ);
-        g2d.setColor(depthColor);
+        // === 立体球体渲染 ===
+        Color baseColor = t.getDepthColor(maxZ);
+        int bR = baseColor.getRed(), bG = baseColor.getGreen(), bB = baseColor.getBlue();
+
+        // 球体暗面颜色
+        Color darkSide = new Color(
+            Math.max(0, (int)(bR * 0.25)),
+            Math.max(0, (int)(bG * 0.25)),
+            Math.max(0, (int)(bB * 0.25)));
+        // 球体亮面颜色
+        Color lightSide = new Color(
+            Math.min(255, (int)(bR * 1.3)),
+            Math.min(255, (int)(bG * 1.3)),
+            Math.min(255, (int)(bB * 1.3)));
+
+        // 主体球体 - 径向渐变模拟光照(光源左上)
+        float lightOffX = (float)(-r * 0.3);
+        float lightOffY = (float)(-r * 0.3);
+        RadialGradientPaint spherePaint = new RadialGradientPaint(
+            new Point2D.Double(sx + lightOffX, sy + lightOffY),
+            (float)(r * 1.1),
+            new float[]{0f, 0.5f, 0.85f, 1f},
+            new Color[]{lightSide, baseColor, darkSide,
+                new Color(Math.max(0, (int)(bR*0.15)),
+                           Math.max(0, (int)(bG*0.15)),
+                           Math.max(0, (int)(bB*0.15)))});
+        g2d.setPaint(spherePaint);
         Ellipse2D.Double shape = t.getScreenShape();
         g2d.fill(shape);
 
-        // 边框
-        Color borderColor;
-        if (t.isHighlighted()) {
-            borderColor = new Color(
-                (int)(255 * dim), (int)(255 * dim), (int)(100 * dim));
-        } else {
-            Color bc = config.getTargetBorderColor();
-            borderColor = new Color(
-                (int)(bc.getRed() * dim), (int)(bc.getGreen() * dim), (int)(bc.getBlue() * dim));
+        // 高光点 (specular) - 左上方白色亮点
+        if (ss > 8) {
+            float specR = (float)(r * 0.35);
+            double specX = sx - r * 0.28;
+            double specY = sy - r * 0.28;
+            int specAlpha = (int)(200 * dim);
+            RadialGradientPaint specPaint = new RadialGradientPaint(
+                new Point2D.Double(specX, specY), specR,
+                new float[]{0f, 0.4f, 1f},
+                new Color[]{
+                    new Color(255, 255, 255, Math.min(255, Math.max(10, specAlpha))),
+                    new Color(255, 255, 255, Math.min(255, Math.max(5, specAlpha / 3))),
+                    new Color(255, 255, 255, 0)});
+            g2d.setPaint(specPaint);
+            g2d.fill(new Ellipse2D.Double(specX - specR, specY - specR, specR*2, specR*2));
         }
-        g2d.setColor(borderColor);
-        float strokeW = Math.max(1, 2 * dim);
+
+        // 边缘rim light (底部右侧微光)
+        if (ss > 14 && dim > 0.3f) {
+            int rimAlpha = (int)(50 * dim);
+            double rimX = sx + r * 0.15;
+            double rimY = sy + r * 0.15;
+            float rimR = (float)(r * 0.9);
+            RadialGradientPaint rimPaint = new RadialGradientPaint(
+                new Point2D.Double(rimX, rimY), rimR,
+                new float[]{0.7f, 0.9f, 1f},
+                new Color[]{
+                    new Color(255, 255, 255, 0),
+                    new Color(200, 220, 255, Math.max(3, rimAlpha / 2)),
+                    new Color(200, 220, 255, 0)});
+            g2d.setPaint(rimPaint);
+            g2d.fill(shape);
+        }
+
+        // 边框 - 细微暗边增强立体
+        if (t.isHighlighted()) {
+            g2d.setColor(new Color(
+                (int)(255 * dim), (int)(220 * dim), (int)(50 * dim)));
+        } else {
+            g2d.setColor(new Color(
+                Math.max(0, (int)(bR * 0.4)),
+                Math.max(0, (int)(bG * 0.4)),
+                Math.max(0, (int)(bB * 0.4)), (int)(180 * dim)));
+        }
+        float strokeW = Math.max(0.5f, 1.5f * dim);
         g2d.setStroke(new BasicStroke(strokeW));
         g2d.draw(shape);
 
-        // 内圈 (近处才显示)
-        if (ss > 12 && dim > 0.5f) {
-            int innerAlpha = (int)(80 * dim);
-            g2d.setColor(new Color(255, 255, 255, Math.max(10, innerAlpha)));
-            double innerSize = ss * 0.4;
-            g2d.fill(new Ellipse2D.Double(sx - innerSize/2, sy - innerSize/2, innerSize, innerSize));
+        // 内圈靶心 (近处才显示)
+        if (ss > 18 && dim > 0.4f) {
+            double innerR = r * 0.22;
+            int innerAlpha = (int)(100 * dim);
+            RadialGradientPaint innerPaint = new RadialGradientPaint(
+                new Point2D.Double(sx, sy), (float)(innerR + 1),
+                new float[]{0f, 0.6f, 1f},
+                new Color[]{
+                    new Color(255, 255, 255, Math.min(255, Math.max(5, innerAlpha))),
+                    new Color(255, 255, 255, Math.max(3, innerAlpha / 3)),
+                    new Color(255, 255, 255, 0)});
+            g2d.setPaint(innerPaint);
+            g2d.fill(new Ellipse2D.Double(sx - innerR, sy - innerR, innerR*2, innerR*2));
         }
 
         // 生命周期指示器
@@ -332,12 +440,12 @@ public class GamePanel extends JPanel implements ActionListener {
             long elapsed = System.currentTimeMillis() - t.getSpawnTime();
             double ratio = 1.0 - (double) elapsed / t.getLifetime();
             ratio = Math.max(0, Math.min(1, ratio));
-            int arcAlpha = (int)(150 * dim);
-            g2d.setColor(new Color(255, 255, 255, Math.max(10, arcAlpha)));
-            g2d.setStroke(new BasicStroke(Math.max(1, 3 * dim)));
+            int arcAlpha = (int)(180 * dim);
+            g2d.setColor(new Color(255, 255, 255, Math.min(255, Math.max(10, arcAlpha))));
+            g2d.setStroke(new BasicStroke(Math.max(1.5f, 3 * dim)));
             int arcAngle = (int) (360 * ratio);
-            g2d.drawArc((int)(sx - ss/2 - 3), (int)(sy - ss/2 - 3),
-                (int)(ss + 6), (int)(ss + 6), 90, arcAngle);
+            g2d.drawArc((int)(sx - r - 4), (int)(sy - r - 4),
+                (int)(ss + 8), (int)(ss + 8), 90, arcAngle);
         }
 
         g2d.setStroke(new BasicStroke(1));
@@ -348,50 +456,62 @@ public class GamePanel extends JPanel implements ActionListener {
         double maxZ = config.getMaxDepth();
         double cx = w / 2.0;
         double cy = h / 2.0 + 30;
+        double wW = config.getWorldWidth();
+        double wH = config.getWorldHeight();
 
-        // 画多层深度线 (从远到近)
-        int layers = 8;
+        // 深度层矩形框 (从远到近，越远越小越暗)
+        int layers = 12;
         for (int i = layers; i >= 0; i--) {
             double z = maxZ * i / layers;
             double scale = fov / (fov + z);
-            float dim = Math.max(0.15f, 1.0f - (float)(z / (maxZ * 1.5)));
+            float dim = Math.max(0.08f, 1.0f - (float)(z / maxZ));
 
             Color gc = config.getGridColor();
-            int r = (int)(gc.getRed() * dim);
-            int gr = (int)(gc.getGreen() * dim);
-            int b = (int)(gc.getBlue() * dim);
-            g2d.setColor(new Color(r, gr, b));
+            int cr = Math.max(0, (int)(gc.getRed() * dim));
+            int cg = Math.max(0, (int)(gc.getGreen() * dim));
+            int cb = Math.max(0, (int)(gc.getBlue() * dim));
+            g2d.setColor(new Color(cr, cg, cb));
+            g2d.setStroke(new BasicStroke(i == 0 ? 1.5f : 0.8f));
 
-            // 水平线
-            double halfW = config.getWorldWidth() * scale;
-            double halfH = config.getWorldHeight() * scale;
-            double ly = cy - halfH;
-            double ly2 = cy + halfH;
-            g2d.drawLine((int)(cx - halfW), (int)ly, (int)(cx + halfW), (int)ly);
-            g2d.drawLine((int)(cx - halfW), (int)ly2, (int)(cx + halfW), (int)ly2);
-
-            // 垂直线
-            double lx = cx - halfW;
-            double lx2 = cx + halfW;
-            g2d.drawLine((int)lx, (int)ly, (int)lx, (int)ly2);
-            g2d.drawLine((int)lx2, (int)ly, (int)lx2, (int)ly2);
+            double halfW = wW * scale;
+            double halfH = wH * scale;
+            g2d.drawRect((int)(cx - halfW), (int)(cy - halfH), (int)(halfW*2), (int)(halfH*2));
         }
 
-        // 汇聚线 (连接近处角到远处角)
-        double nearScale = fov / fov; // z=0
+        // 汇聚线 - 从近处四角连到远处四角
+        double nearScale = fov / fov;
         double farScale = fov / (fov + maxZ);
-        double nearW = config.getWorldWidth() * nearScale;
-        double nearH = config.getWorldHeight() * nearScale;
-        double farW = config.getWorldWidth() * farScale;
-        double farH = config.getWorldHeight() * farScale;
+        double nW = wW * nearScale, nH = wH * nearScale;
+        double fW = wW * farScale, fH = wH * farScale;
 
         Color gc = config.getGridColor();
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2));
-        // 四条汇聚线
-        g2d.drawLine((int)(cx - nearW), (int)(cy - nearH), (int)(cx - farW), (int)(cy - farH));
-        g2d.drawLine((int)(cx + nearW), (int)(cy - nearH), (int)(cx + farW), (int)(cy - farH));
-        g2d.drawLine((int)(cx - nearW), (int)(cy + nearH), (int)(cx - farW), (int)(cy + farH));
-        g2d.drawLine((int)(cx + nearW), (int)(cy + nearH), (int)(cx + farW), (int)(cy + farH));
+        g2d.setStroke(new BasicStroke(0.7f));
+        g2d.drawLine((int)(cx-nW),(int)(cy-nH),(int)(cx-fW),(int)(cy-fH));
+        g2d.drawLine((int)(cx+nW),(int)(cy-nH),(int)(cx+fW),(int)(cy-fH));
+        g2d.drawLine((int)(cx-nW),(int)(cy+nH),(int)(cx-fW),(int)(cy+fH));
+        g2d.drawLine((int)(cx+nW),(int)(cy+nH),(int)(cx+fW),(int)(cy+fH));
+
+        // 中间十字汇聚线
+        g2d.drawLine((int)cx, (int)(cy-nH), (int)cx, (int)(cy-fH));
+        g2d.drawLine((int)cx, (int)(cy+nH), (int)cx, (int)(cy+fH));
+        g2d.drawLine((int)(cx-nW), (int)cy, (int)(cx-fW), (int)cy);
+        g2d.drawLine((int)(cx+nW), (int)cy, (int)(cx+fW), (int)cy);
+
+        // 对角汇聚线
+        g2d.setColor(new Color(gc.getRed()/3, gc.getGreen()/3, gc.getBlue()/3));
+        double midNW = nW/2, midNH = nH/2;
+        double midFW = fW/2, midFH = fH/2;
+        g2d.drawLine((int)(cx-midNW),(int)(cy-nH),(int)(cx-midFW),(int)(cy-fH));
+        g2d.drawLine((int)(cx+midNW),(int)(cy-nH),(int)(cx+midFW),(int)(cy-fH));
+        g2d.drawLine((int)(cx-midNW),(int)(cy+nH),(int)(cx-midFW),(int)(cy+fH));
+        g2d.drawLine((int)(cx+midNW),(int)(cy+nH),(int)(cx+midFW),(int)(cy+fH));
+        g2d.drawLine((int)(cx-nW),(int)(cy-midNH),(int)(cx-fW),(int)(cy-midFH));
+        g2d.drawLine((int)(cx+nW),(int)(cy-midNH),(int)(cx+fW),(int)(cy-midFH));
+        g2d.drawLine((int)(cx-nW),(int)(cy+midNH),(int)(cx-fW),(int)(cy+midFH));
+        g2d.drawLine((int)(cx+nW),(int)(cy+midNH),(int)(cx+fW),(int)(cy+midFH));
+
+        g2d.setStroke(new BasicStroke(1));
     }
 
     private void drawCrosshair(Graphics2D g2d, int mx, int my) {

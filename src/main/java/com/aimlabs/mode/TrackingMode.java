@@ -76,19 +76,35 @@ public class TrackingMode implements ModeHandler {
         targets.clear();
         mouseDown = false;
         int size = config.getTrackTargetSize();
-        double tx = width / 2.0;
-        double ty = height / 2.0;
-        Target t = new Target(tx, ty, size, config.getTargetColor());
-        double angle = random.nextDouble() * Math.PI * 2;
-        double speed = 2 + random.nextDouble() * 2;
-        t.setVelocityX(Math.cos(angle) * speed);
-        t.setVelocityY(Math.sin(angle) * speed);
-        targets.add(t);
+        int count = config.getTrackTargetCount();
+        double minDist = size * config.getTargetDensity() * 0.3;
+        for (int i = 0; i < count; i++) {
+            double tx, ty;
+            int attempts = 0;
+            do {
+                tx = size + random.nextDouble() * (width - size * 2);
+                ty = 80 + size + random.nextDouble() * (height - size * 2 - 80);
+                attempts++;
+            } while (isTooClose(tx, ty, minDist) && attempts < 50);
+            Target t = new Target(tx, ty, size, config.getTargetColor());
+            double angle = random.nextDouble() * Math.PI * 2;
+            double speed = 2 + random.nextDouble() * 2;
+            t.setVelocityX(Math.cos(angle) * speed);
+            t.setVelocityY(Math.sin(angle) * speed);
+            targets.add(t);
+        }
+    }
+
+    private boolean isTooClose(double x, double y, double minDist) {
+        for (Target t : targets) {
+            if (t.distanceTo(x, y) < minDist) return true;
+        }
+        return false;
     }
 
     @Override
     public String getModeInfo() {
-        return "按住鼠标追踪靶标 | 速度: " + String.format("%.1f", config.getTrackSpeed());
+        return "按住鼠标追踪靶标 | 速度: " + String.format("%.1f", config.getTrackSpeed()) + " | 靶标: " + config.getTrackTargetCount();
     }
 
     public boolean isMouseDown() { return mouseDown; }

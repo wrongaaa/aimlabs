@@ -96,7 +96,7 @@ public class SwitchMode implements ModeHandler {
             ty = 80 + random.nextDouble() * (height - size - 80);
             overlapping = false;
             for (Target t : targets) {
-                if (t.distanceTo(tx, ty) < size * 1.5) {
+                if (t.distanceTo(tx, ty) < size * config.getTargetDensity() * 0.3) {
                     overlapping = true;
                     break;
                 }

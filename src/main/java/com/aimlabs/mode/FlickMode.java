@@ -74,9 +74,22 @@ public class FlickMode implements ModeHandler {
 
     private void spawnTarget() {
         int size = config.getTargetDefaultSize();
-        double tx = size / 2.0 + random.nextDouble() * (width - size);
-        double ty = 80 + random.nextDouble() * (height - size - 80);
+        double minDist = size * config.getTargetDensity() * 0.3;
+        double tx, ty;
+        int attempts = 0;
+        do {
+            tx = size / 2.0 + random.nextDouble() * (width - size);
+            ty = 80 + random.nextDouble() * (height - size - 80);
+            attempts++;
+        } while (isTooClose(tx, ty, minDist) && attempts < 50);
         Target t = new Target(tx, ty, size, config.getTargetColor());
         targets.add(t);
+    }
+
+    private boolean isTooClose(double x, double y, double minDist) {
+        for (Target t : targets) {
+            if (t.distanceTo(x, y) < minDist) return true;
+        }
+        return false;
     }
 }

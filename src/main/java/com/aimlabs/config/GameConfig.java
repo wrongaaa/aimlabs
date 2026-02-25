@@ -37,30 +37,37 @@ public class GameConfig implements Serializable {
     // 游戏时间设置（秒）
     private int gameDuration = 60;
 
+    // 全局靶标分布密度 (1=紧密 10=稀疏，控制靶标间最小距离倍率)
+    private double targetDensity = 5.0;
+
     // 各模式专属设置
     // Flick
-    private int flickTargetCount = 1;
+    private int flickTargetCount = 6;
     private double flickSpawnDelay = 0;
 
     // Track
     private double trackSpeed = 3.0;
     private int trackTargetSize = 50;
+    private int trackTargetCount = 6;
 
     // Speed
     private double speedTargetLifetime = 1.0;
     private int speedTargetSize = 35;
+    private int speedTargetCount = 6;
 
     // Precision
     private int precisionMinSize = 8;
     private int precisionMaxSize = 15;
+    private int precisionTargetCount = 6;
 
     // Reaction
     private double reactionMinDelay = 0.5;
     private double reactionMaxDelay = 3.0;
     private int reactionTargetSize = 50;
+    private int reactionTargetCount = 6;
 
     // Switch
-    private int switchTargetCount = 5;
+    private int switchTargetCount = 6;
     private int switchTargetSize = 35;
 
     // 灵敏度 (鼠标倍率)
@@ -118,6 +125,9 @@ public class GameConfig implements Serializable {
     public int getGameDuration() { return gameDuration; }
     public void setGameDuration(int v) { this.gameDuration = v; }
 
+    public double getTargetDensity() { return targetDensity; }
+    public void setTargetDensity(double v) { this.targetDensity = v; }
+
     public int getFlickTargetCount() { return flickTargetCount; }
     public void setFlickTargetCount(int v) { this.flickTargetCount = v; }
     public double getFlickSpawnDelay() { return flickSpawnDelay; }
@@ -127,16 +137,22 @@ public class GameConfig implements Serializable {
     public void setTrackSpeed(double v) { this.trackSpeed = v; }
     public int getTrackTargetSize() { return trackTargetSize; }
     public void setTrackTargetSize(int v) { this.trackTargetSize = v; }
+    public int getTrackTargetCount() { return trackTargetCount; }
+    public void setTrackTargetCount(int v) { this.trackTargetCount = v; }
 
     public double getSpeedTargetLifetime() { return speedTargetLifetime; }
     public void setSpeedTargetLifetime(double v) { this.speedTargetLifetime = v; }
     public int getSpeedTargetSize() { return speedTargetSize; }
     public void setSpeedTargetSize(int v) { this.speedTargetSize = v; }
+    public int getSpeedTargetCount() { return speedTargetCount; }
+    public void setSpeedTargetCount(int v) { this.speedTargetCount = v; }
 
     public int getPrecisionMinSize() { return precisionMinSize; }
     public void setPrecisionMinSize(int v) { this.precisionMinSize = v; }
     public int getPrecisionMaxSize() { return precisionMaxSize; }
     public void setPrecisionMaxSize(int v) { this.precisionMaxSize = v; }
+    public int getPrecisionTargetCount() { return precisionTargetCount; }
+    public void setPrecisionTargetCount(int v) { this.precisionTargetCount = v; }
 
     public double getReactionMinDelay() { return reactionMinDelay; }
     public void setReactionMinDelay(double v) { this.reactionMinDelay = v; }
@@ -144,6 +160,8 @@ public class GameConfig implements Serializable {
     public void setReactionMaxDelay(double v) { this.reactionMaxDelay = v; }
     public int getReactionTargetSize() { return reactionTargetSize; }
     public void setReactionTargetSize(int v) { this.reactionTargetSize = v; }
+    public int getReactionTargetCount() { return reactionTargetCount; }
+    public void setReactionTargetCount(int v) { this.reactionTargetCount = v; }
 
     public int getSwitchTargetCount() { return switchTargetCount; }
     public void setSwitchTargetCount(int v) { this.switchTargetCount = v; }
@@ -186,17 +204,22 @@ public class GameConfig implements Serializable {
         props.setProperty("gridColor", colorToHex(gridColor));
         props.setProperty("showGrid", String.valueOf(showGrid));
         props.setProperty("gameDuration", String.valueOf(gameDuration));
+        props.setProperty("targetDensity", String.valueOf(targetDensity));
         props.setProperty("flickTargetCount", String.valueOf(flickTargetCount));
         props.setProperty("flickSpawnDelay", String.valueOf(flickSpawnDelay));
         props.setProperty("trackSpeed", String.valueOf(trackSpeed));
         props.setProperty("trackTargetSize", String.valueOf(trackTargetSize));
+        props.setProperty("trackTargetCount", String.valueOf(trackTargetCount));
         props.setProperty("speedTargetLifetime", String.valueOf(speedTargetLifetime));
         props.setProperty("speedTargetSize", String.valueOf(speedTargetSize));
+        props.setProperty("speedTargetCount", String.valueOf(speedTargetCount));
         props.setProperty("precisionMinSize", String.valueOf(precisionMinSize));
         props.setProperty("precisionMaxSize", String.valueOf(precisionMaxSize));
+        props.setProperty("precisionTargetCount", String.valueOf(precisionTargetCount));
         props.setProperty("reactionMinDelay", String.valueOf(reactionMinDelay));
         props.setProperty("reactionMaxDelay", String.valueOf(reactionMaxDelay));
         props.setProperty("reactionTargetSize", String.valueOf(reactionTargetSize));
+        props.setProperty("reactionTargetCount", String.valueOf(reactionTargetCount));
         props.setProperty("switchTargetCount", String.valueOf(switchTargetCount));
         props.setProperty("switchTargetSize", String.valueOf(switchTargetSize));
         props.setProperty("sensitivity", String.valueOf(sensitivity));
@@ -237,18 +260,23 @@ public class GameConfig implements Serializable {
             gridColor = hexToColor(props.getProperty("gridColor", "#323241"));
             showGrid = Boolean.parseBoolean(props.getProperty("showGrid", "true"));
             gameDuration = Integer.parseInt(props.getProperty("gameDuration", "60"));
-            flickTargetCount = Integer.parseInt(props.getProperty("flickTargetCount", "1"));
+            targetDensity = Double.parseDouble(props.getProperty("targetDensity", "5.0"));
+            flickTargetCount = Integer.parseInt(props.getProperty("flickTargetCount", "6"));
             flickSpawnDelay = Double.parseDouble(props.getProperty("flickSpawnDelay", "0"));
             trackSpeed = Double.parseDouble(props.getProperty("trackSpeed", "3.0"));
             trackTargetSize = Integer.parseInt(props.getProperty("trackTargetSize", "50"));
+            trackTargetCount = Integer.parseInt(props.getProperty("trackTargetCount", "6"));
             speedTargetLifetime = Double.parseDouble(props.getProperty("speedTargetLifetime", "1.0"));
             speedTargetSize = Integer.parseInt(props.getProperty("speedTargetSize", "35"));
+            speedTargetCount = Integer.parseInt(props.getProperty("speedTargetCount", "6"));
             precisionMinSize = Integer.parseInt(props.getProperty("precisionMinSize", "8"));
             precisionMaxSize = Integer.parseInt(props.getProperty("precisionMaxSize", "15"));
+            precisionTargetCount = Integer.parseInt(props.getProperty("precisionTargetCount", "6"));
             reactionMinDelay = Double.parseDouble(props.getProperty("reactionMinDelay", "0.5"));
             reactionMaxDelay = Double.parseDouble(props.getProperty("reactionMaxDelay", "3.0"));
             reactionTargetSize = Integer.parseInt(props.getProperty("reactionTargetSize", "50"));
-            switchTargetCount = Integer.parseInt(props.getProperty("switchTargetCount", "5"));
+            reactionTargetCount = Integer.parseInt(props.getProperty("reactionTargetCount", "6"));
+            switchTargetCount = Integer.parseInt(props.getProperty("switchTargetCount", "6"));
             switchTargetSize = Integer.parseInt(props.getProperty("switchTargetSize", "35"));
             sensitivity = Double.parseDouble(props.getProperty("sensitivity", "1.0"));
             soundEnabled = Boolean.parseBoolean(props.getProperty("soundEnabled", "true"));

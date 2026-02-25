@@ -33,10 +33,8 @@ public class SpeedMode implements ModeHandler {
         this.width = width;
         this.height = height;
 
-        // 生成新靶标
-        spawnTimer += dt;
-        if (spawnTimer >= SPAWN_INTERVAL) {
-            spawnTimer = 0;
+        // 保持靶标数量
+        while (targets.size() < config.getSpeedTargetCount()) {
             spawnTarget();
         }
 
@@ -82,21 +80,35 @@ public class SpeedMode implements ModeHandler {
     @Override
     public void reset() {
         targets.clear();
-        spawnTimer = 0;
-        spawnTarget();
+        for (int i = 0; i < config.getSpeedTargetCount(); i++) {
+            spawnTarget();
+        }
     }
 
     @Override
     public String getModeInfo() {
-        return "快速点击 | 存活: " + String.format("%.1fs", config.getSpeedTargetLifetime());
+        return "快速点击 | 存活: " + String.format("%.1fs", config.getSpeedTargetLifetime()) + " | 靶标: " + config.getSpeedTargetCount();
     }
 
     private void spawnTarget() {
         int size = config.getSpeedTargetSize();
-        double tx = size / 2.0 + random.nextDouble() * (width - size);
-        double ty = 80 + random.nextDouble() * (height - size - 80);
+        double minDist = size * config.getTargetDensity() * 0.3;
+        double tx, ty;
+        int attempts = 0;
+        do {
+            tx = size / 2.0 + random.nextDouble() * (width - size);
+            ty = 80 + random.nextDouble() * (height - size - 80);
+            attempts++;
+        } while (isTooClose(tx, ty, minDist) && attempts < 50);
         long lifetime = (long) (config.getSpeedTargetLifetime() * 1000);
         Target t = new Target(tx, ty, size, config.getTargetColor(), lifetime);
         targets.add(t);
+    }
+
+    private boolean isTooClose(double x, double y, double minDist) {
+        for (Target t : targets) {
+            if (t.distanceTo(x, y) < minDist) return true;
+        }
+        return false;
     }
 }

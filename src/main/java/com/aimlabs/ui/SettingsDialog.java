@@ -80,6 +80,7 @@ public class SettingsDialog extends JDialog {
         addSlider(p, "默认大小", 10, 100, config.getTargetDefaultSize(), v -> config.setTargetDefaultSize(v));
         addSlider(p, "最小大小", 5, 50, config.getTargetMinSize(), v -> config.setTargetMinSize(v));
         addSlider(p, "最大大小", 20, 150, config.getTargetMaxSize(), v -> config.setTargetMaxSize(v));
+        addDoubleSlider(p, "分布密度", 1.0, 10.0, config.getTargetDensity(), v -> config.setTargetDensity(v));
         addColorPicker(p, "靶标颜色", config.getTargetColor(), c -> config.setTargetColor(c));
         addColorPicker(p, "边框颜色", config.getTargetBorderColor(), c -> config.setTargetBorderColor(c));
         addColorPicker(p, "命中颜色", config.getTargetHitColor(), c -> config.setTargetHitColor(c));
@@ -111,6 +112,7 @@ public class SettingsDialog extends JDialog {
 
     private JPanel createTrackPanel() {
         JPanel p = createFormPanel();
+        addSlider(p, "靶标数量", 1, 15, config.getTrackTargetCount(), v -> config.setTrackTargetCount(v));
         addDoubleSlider(p, "移动速度", 0.5, 10.0, config.getTrackSpeed(), v -> config.setTrackSpeed(v));
         addSlider(p, "靶标大小", 20, 100, config.getTrackTargetSize(), v -> config.setTrackTargetSize(v));
         return wrapScroll(p);
@@ -118,6 +120,7 @@ public class SettingsDialog extends JDialog {
 
     private JPanel createSpeedPanel() {
         JPanel p = createFormPanel();
+        addSlider(p, "靶标数量", 1, 15, config.getSpeedTargetCount(), v -> config.setSpeedTargetCount(v));
         addDoubleSlider(p, "存活时间(秒)", 0.3, 5.0, config.getSpeedTargetLifetime(), v -> config.setSpeedTargetLifetime(v));
         addSlider(p, "靶标大小", 15, 80, config.getSpeedTargetSize(), v -> config.setSpeedTargetSize(v));
         return wrapScroll(p);
@@ -125,6 +128,7 @@ public class SettingsDialog extends JDialog {
 
     private JPanel createPrecisionPanel() {
         JPanel p = createFormPanel();
+        addSlider(p, "靶标数量", 1, 15, config.getPrecisionTargetCount(), v -> config.setPrecisionTargetCount(v));
         addSlider(p, "最小大小", 3, 20, config.getPrecisionMinSize(), v -> config.setPrecisionMinSize(v));
         addSlider(p, "最大大小", 10, 40, config.getPrecisionMaxSize(), v -> config.setPrecisionMaxSize(v));
         return wrapScroll(p);
@@ -132,6 +136,7 @@ public class SettingsDialog extends JDialog {
 
     private JPanel createReactionPanel() {
         JPanel p = createFormPanel();
+        addSlider(p, "靶标数量", 1, 15, config.getReactionTargetCount(), v -> config.setReactionTargetCount(v));
         addDoubleSlider(p, "最短延迟(秒)", 0.1, 3.0, config.getReactionMinDelay(), v -> config.setReactionMinDelay(v));
         addDoubleSlider(p, "最长延迟(秒)", 1.0, 10.0, config.getReactionMaxDelay(), v -> config.setReactionMaxDelay(v));
         addSlider(p, "靶标大小", 20, 100, config.getReactionTargetSize(), v -> config.setReactionTargetSize(v));

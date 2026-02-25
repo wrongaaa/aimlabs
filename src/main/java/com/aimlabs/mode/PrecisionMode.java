@@ -51,7 +51,7 @@ public class PrecisionMode implements ModeHandler {
         if (!hit) {
             stats.recordMiss();
         }
-        while (targets.size() < 1) {
+        while (targets.size() < config.getPrecisionTargetCount()) {
             spawnTarget();
         }
     }
@@ -66,21 +66,28 @@ public class PrecisionMode implements ModeHandler {
     @Override
     public void reset() {
         targets.clear();
-        spawnTarget();
+        for (int i = 0; i < config.getPrecisionTargetCount(); i++) {
+            spawnTarget();
+        }
     }
 
     @Override
     public String getModeInfo() {
-        return "精准点击 | 大小: " + config.getPrecisionMinSize() + "-" + config.getPrecisionMaxSize() + "px";
+        return "精准点击 | 大小: " + config.getPrecisionMinSize() + "-" + config.getPrecisionMaxSize() + "px | 靶标: " + config.getPrecisionTargetCount();
     }
 
     private void spawnTarget() {
         int minSize = config.getPrecisionMinSize();
         int maxSize = config.getPrecisionMaxSize();
         int size = minSize + random.nextInt(maxSize - minSize + 1);
-        double tx = size + random.nextDouble() * (width - size * 2);
-        double ty = 80 + random.nextDouble() * (height - size * 2 - 80);
-        // 精准模式用不同颜色区分大小
+        double minDist = size * config.getTargetDensity() * 0.4;
+        double tx, ty;
+        int attempts = 0;
+        do {
+            tx = size + random.nextDouble() * (width - size * 2);
+            ty = 80 + random.nextDouble() * (height - size * 2 - 80);
+            attempts++;
+        } while (isTooClose(tx, ty, minDist) && attempts < 50);
         float ratio = (float)(size - minSize) / Math.max(1, maxSize - minSize);
         Color color = new Color(
             (int)(255 * (1 - ratio * 0.5)),
@@ -89,5 +96,12 @@ public class PrecisionMode implements ModeHandler {
         );
         Target t = new Target(tx, ty, size, color);
         targets.add(t);
+    }
+
+    private boolean isTooClose(double x, double y, double minDist) {
+        for (Target t : targets) {
+            if (t.distanceTo(x, y) < minDist) return true;
+        }
+        return false;
     }
 }

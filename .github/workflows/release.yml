@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p build out
           find src -name "*.java" > sources.txt
-          javac -d build @sources.txt
+          javac -encoding UTF-8 -d build @sources.txt
           rm sources.txt
 
       - name: Create JAR

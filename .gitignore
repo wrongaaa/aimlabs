@@ -1,0 +1,9 @@
+# AimLabs Build
+*.class
+*.jar
+*.exe
+build/
+out/
+.idea/
+*.iml
+aimlabs_config.properties

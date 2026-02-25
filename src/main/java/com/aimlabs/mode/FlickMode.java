@@ -1,0 +1,82 @@
+package com.aimlabs.mode;
+
+import com.aimlabs.config.GameConfig;
+import com.aimlabs.game.GameStats;
+import com.aimlabs.game.Target;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * Flick模式 - 甩枪：靶标出现在随机位置，点击后消失并在新位置出现
+ */
+public class FlickMode implements ModeHandler {
+    private final List<Target> targets = new ArrayList<>();
+    private final Random random = new Random();
+    private GameConfig config;
+    private int width, height;
+
+    @Override
+    public void init(int width, int height, GameConfig config) {
+        this.config = config;
+        this.width = width;
+        this.height = height;
+        reset();
+    }
+
+    @Override
+    public void update(double dt, int width, int height) {
+        this.width = width;
+        this.height = height;
+        // Flick模式靶标是静态的，无需更新位置
+    }
+
+    @Override
+    public void onMouseClick(double x, double y, GameStats stats) {
+        boolean hit = false;
+        for (int i = targets.size() - 1; i >= 0; i--) {
+            Target t = targets.get(i);
+            if (t.isAlive() && t.contains(x, y)) {
+                long reaction = System.currentTimeMillis() - t.getSpawnTime();
+                stats.recordHit(reaction);
+                targets.remove(i);
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) {
+            stats.recordMiss();
+        }
+        // 确保始终有足够的靶标
+        while (targets.size() < config.getFlickTargetCount()) {
+            spawnTarget();
+        }
+    }
+
+    @Override public void onMouseMove(double x, double y, GameStats stats) {}
+    @Override public void onMousePress(double x, double y, GameStats stats) {}
+    @Override public void onMouseRelease(double x, double y, GameStats stats) {}
+
+    @Override
+    public List<Target> getTargets() { return targets; }
+
+    @Override
+    public void reset() {
+        targets.clear();
+        for (int i = 0; i < config.getFlickTargetCount(); i++) {
+            spawnTarget();
+        }
+    }
+
+    @Override
+    public String getModeInfo() { return "点击靶标 | 靶标数: " + config.getFlickTargetCount(); }
+
+    private void spawnTarget() {
+        int size = config.getTargetDefaultSize();
+        double tx = size / 2.0 + random.nextDouble() * (width - size);
+        double ty = 80 + random.nextDouble() * (height - size - 80);
+        Target t = new Target(tx, ty, size, config.getTargetColor());
+        targets.add(t);
+    }
+}

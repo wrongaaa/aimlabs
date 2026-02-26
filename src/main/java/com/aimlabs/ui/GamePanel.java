@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.awt.Robot;
 
 /**
  * 游戏主面板 - 渲染和交互
@@ -36,6 +37,11 @@ public class GamePanel extends JPanel implements ActionListener {
     private int lastRawX, lastRawY;
     private boolean hasLastRaw = false;
 
+    // 鼠标锁定 + ESC暂停
+    private Robot robot;
+    private boolean mouseCaptured = false;
+    private boolean paused = false;
+
     public GamePanel(GameConfig config) {
         this.config = config;
         this.stats = new GameStats();
@@ -52,10 +58,27 @@ public class GamePanel extends JPanel implements ActionListener {
         setFocusable(true);
         setCursor(createBlankCursor());
 
+        // 初始化Robot用于鼠标锁定
+        try {
+            robot = new Robot();
+        } catch (AWTException ex) {
+            robot = null;
+        }
+
+        // ESC键切换暂停
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE && running) {
+                    togglePause();
+                }
+            }
+        });
+
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (!running || currentMode == null) return;
+                if (!running || paused || currentMode == null) return;
                 // FPS: 点击始终在屏幕中心(准星位置)
                 int cx = getWidth() / 2;
                 int cy = getHeight() / 2 + 30;
@@ -66,7 +89,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (!running || currentMode == null) return;
+                if (!running || paused || currentMode == null) return;
                 int cx = getWidth() / 2;
                 int cy = getHeight() / 2 + 30;
                 currentMode.onMouseRelease(cx, cy, stats);
@@ -99,18 +122,25 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     private void updateCamera(int rawX, int rawY) {
-        if (!running || !hasLastRaw) {
-            lastRawX = rawX;
-            lastRawY = rawY;
-            hasLastRaw = true;
-            return;
-        }
+        if (!running || paused) return;
+
+        int cx = getWidth() / 2;
+        int cy = getHeight() / 2;
+        int dx = rawX - cx;
+        int dy = rawY - cy;
+
+        if (dx == 0 && dy == 0) return; // 忽略warp回中心的事件
+
         double sens = config.getSensitivity();
-        // 鼠标delta转换为相机世界坐标偏移
-        cameraX += (rawX - lastRawX) * sens;
-        cameraY += (rawY - lastRawY) * sens;
-        lastRawX = rawX;
-        lastRawY = rawY;
+        cameraX += dx * sens;
+        cameraY += dy * sens;
+
+        // 将鼠标锁定在面板中心
+        if (robot != null && mouseCaptured) {
+            Point screenCenter = new Point(cx, cy);
+            SwingUtilities.convertPointToScreen(screenCenter, this);
+            robot.mouseMove(screenCenter.x, screenCenter.y);
+        }
     }
 
     private Cursor createBlankCursor() {
@@ -128,11 +158,13 @@ public class GamePanel extends JPanel implements ActionListener {
         this.stats.reset();
         this.timeRemaining = config.getGameDuration();
         this.running = true;
+        this.paused = false;
         this.lastUpdateTime = System.nanoTime();
         this.hasLastRaw = false;
         this.cameraX = 0;
         this.cameraY = 0;
         setCursor(createBlankCursor());
+        captureMouse();
         gameTimer.start();
         countdownTimer.start();
         requestFocusInWindow();
@@ -140,8 +172,10 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public void stopGame() {
         running = false;
+        paused = false;
         gameTimer.stop();
         countdownTimer.stop();
+        releaseMouse();
         setCursor(Cursor.getDefaultCursor());
         if (onGameEnd != null) onGameEnd.run();
         repaint();
@@ -149,6 +183,39 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public void setOnGameEnd(Runnable callback) {
         this.onGameEnd = callback;
+    }
+
+    private void togglePause() {
+        paused = !paused;
+        if (paused) {
+            gameTimer.stop();
+            countdownTimer.stop();
+            releaseMouse();
+            setCursor(Cursor.getDefaultCursor());
+        } else {
+            lastUpdateTime = System.nanoTime();
+            gameTimer.start();
+            countdownTimer.start();
+            captureMouse();
+            setCursor(createBlankCursor());
+            requestFocusInWindow();
+        }
+        repaint();
+    }
+
+    private void captureMouse() {
+        mouseCaptured = true;
+        if (robot != null) {
+            int cx = getWidth() / 2;
+            int cy = getHeight() / 2;
+            Point screenCenter = new Point(cx, cy);
+            SwingUtilities.convertPointToScreen(screenCenter, this);
+            robot.mouseMove(screenCenter.x, screenCenter.y);
+        }
+    }
+
+    private void releaseMouse() {
+        mouseCaptured = false;
     }
 
     private ModeHandler createModeHandler(GameMode mode) {
@@ -258,6 +325,22 @@ public class GamePanel extends JPanel implements ActionListener {
             // 准星 - 固定屏幕中心(FPS风格)
             if (config.isShowCrosshair()) {
                 drawCrosshair(g2d, w / 2, h / 2 + 30);
+            }
+
+            // 暂停覆盖层
+            if (paused) {
+                g2d.setColor(new Color(0, 0, 0, 150));
+                g2d.fillRect(0, 55, w, h - 55);
+                g2d.setFont(new Font("SansSerif", Font.BOLD, 36));
+                g2d.setColor(new Color(255, 200, 0));
+                String pauseText = "已暂停";
+                int ptw = g2d.getFontMetrics().stringWidth(pauseText);
+                g2d.drawString(pauseText, (w - ptw) / 2, h / 2 - 10);
+                g2d.setFont(new Font("SansSerif", Font.PLAIN, 16));
+                g2d.setColor(new Color(180, 180, 200));
+                String hint = "按 ESC 继续  |  可点击左侧菜单";
+                int htw = g2d.getFontMetrics().stringWidth(hint);
+                g2d.drawString(hint, (w - htw) / 2, h / 2 + 25);
             }
         } else if (!running && stats.getTotalShots() > 0) {
             // 结算画面
@@ -469,7 +552,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private void drawRoom(Graphics2D g2d, int w, int h) {
         double rW = config.getWorldWidth();   // 房间半宽
         double rH = config.getWorldHeight();  // 房间半高
-        double rD = config.getMaxDepth();     // 房间深度(z: 0 ~ rD)
+        double rD = config.getMaxDepth();     // 房间深度
+        double zNear = -rD * 0.3;            // 房间延伸到相机后方，营造封闭感
 
         // === 后墙 (z = rD) ===
         g2d.setColor(new Color(22, 22, 32));
@@ -489,74 +573,68 @@ public class GamePanel extends JPanel implements ActionListener {
 
         // === 地板 (y = rH) ===
         g2d.setColor(new Color(35, 38, 48));
-        fillQuad3D(g2d, w, h, -rW, rH, 0,  rW, rH, 0,  rW, rH, rD,  -rW, rH, rD);
-        // 地板网格
+        fillQuad3D(g2d, w, h, -rW, rH, zNear,  rW, rH, zNear,  rW, rH, rD,  -rW, rH, rD);
         g2d.setColor(new Color(gc.getRed(), gc.getGreen(), gc.getBlue(), 60));
         g2d.setStroke(new BasicStroke(0.7f));
         for (int i = 0; i <= gridN; i++) {
             double t = -1.0 + 2.0 * i / gridN;
-            drawLine3D(g2d, w, h, t*rW, rH, 0, t*rW, rH, rD); // 纵线
+            drawLine3D(g2d, w, h, t*rW, rH, zNear, t*rW, rH, rD);
         }
-        int depthLines = 10;
+        int depthLines = 12;
         for (int i = 0; i <= depthLines; i++) {
-            double z = rD * i / depthLines;
-            drawLine3D(g2d, w, h, -rW, rH, z, rW, rH, z); // 横线
+            double z = zNear + (rD - zNear) * i / depthLines;
+            drawLine3D(g2d, w, h, -rW, rH, z, rW, rH, z);
         }
 
         // === 天花板 (y = -rH) ===
         g2d.setColor(new Color(25, 25, 35));
-        fillQuad3D(g2d, w, h, -rW, -rH, 0,  rW, -rH, 0,  rW, -rH, rD,  -rW, -rH, rD);
+        fillQuad3D(g2d, w, h, -rW, -rH, zNear,  rW, -rH, zNear,  rW, -rH, rD,  -rW, -rH, rD);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 40));
         g2d.setStroke(new BasicStroke(0.5f));
         for (int i = 0; i <= depthLines; i++) {
-            double z = rD * i / depthLines;
+            double z = zNear + (rD - zNear) * i / depthLines;
             drawLine3D(g2d, w, h, -rW, -rH, z, rW, -rH, z);
         }
 
         // === 左墙 (x = -rW) ===
         g2d.setColor(new Color(30, 32, 42));
-        fillQuad3D(g2d, w, h, -rW, -rH, 0,  -rW, -rH, rD,  -rW, rH, rD,  -rW, rH, 0);
+        fillQuad3D(g2d, w, h, -rW, -rH, zNear,  -rW, -rH, rD,  -rW, rH, rD,  -rW, rH, zNear);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 50));
         for (int i = 0; i <= depthLines; i++) {
-            double z = rD * i / depthLines;
+            double z = zNear + (rD - zNear) * i / depthLines;
             drawLine3D(g2d, w, h, -rW, -rH, z, -rW, rH, z);
         }
         for (int i = 0; i <= 4; i++) {
             double t = -1.0 + 2.0 * i / 4;
-            drawLine3D(g2d, w, h, -rW, t*rH, 0, -rW, t*rH, rD);
+            drawLine3D(g2d, w, h, -rW, t*rH, zNear, -rW, t*rH, rD);
         }
 
         // === 右墙 (x = rW) ===
         g2d.setColor(new Color(30, 32, 42));
-        fillQuad3D(g2d, w, h, rW, -rH, 0,  rW, -rH, rD,  rW, rH, rD,  rW, rH, 0);
+        fillQuad3D(g2d, w, h, rW, -rH, zNear,  rW, -rH, rD,  rW, rH, rD,  rW, rH, zNear);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 50));
         for (int i = 0; i <= depthLines; i++) {
-            double z = rD * i / depthLines;
+            double z = zNear + (rD - zNear) * i / depthLines;
             drawLine3D(g2d, w, h, rW, -rH, z, rW, rH, z);
         }
         for (int i = 0; i <= 4; i++) {
             double t = -1.0 + 2.0 * i / 4;
-            drawLine3D(g2d, w, h, rW, t*rH, 0, rW, t*rH, rD);
+            drawLine3D(g2d, w, h, rW, t*rH, zNear, rW, t*rH, rD);
         }
 
-        // === 房间边框(12条棱线) ===
+        // === 房间边框 - 远面+连接线(无近面，相机在房间内) ===
         g2d.setColor(new Color(gc.getRed(), gc.getGreen(), gc.getBlue(), 100));
         g2d.setStroke(new BasicStroke(1.2f));
-        // 近面4条
-        drawLine3D(g2d,w,h, -rW,-rH,0, rW,-rH,0);
-        drawLine3D(g2d,w,h, rW,-rH,0, rW,rH,0);
-        drawLine3D(g2d,w,h, rW,rH,0, -rW,rH,0);
-        drawLine3D(g2d,w,h, -rW,rH,0, -rW,-rH,0);
         // 远面4条
         drawLine3D(g2d,w,h, -rW,-rH,rD, rW,-rH,rD);
         drawLine3D(g2d,w,h, rW,-rH,rD, rW,rH,rD);
         drawLine3D(g2d,w,h, rW,rH,rD, -rW,rH,rD);
         drawLine3D(g2d,w,h, -rW,rH,rD, -rW,-rH,rD);
         // 连接4条
-        drawLine3D(g2d,w,h, -rW,-rH,0, -rW,-rH,rD);
-        drawLine3D(g2d,w,h, rW,-rH,0, rW,-rH,rD);
-        drawLine3D(g2d,w,h, rW,rH,0, rW,rH,rD);
-        drawLine3D(g2d,w,h, -rW,rH,0, -rW,rH,rD);
+        drawLine3D(g2d,w,h, -rW,-rH,zNear, -rW,-rH,rD);
+        drawLine3D(g2d,w,h, rW,-rH,zNear, rW,-rH,rD);
+        drawLine3D(g2d,w,h, rW,rH,zNear, rW,rH,rD);
+        drawLine3D(g2d,w,h, -rW,rH,zNear, -rW,rH,rD);
 
         g2d.setStroke(new BasicStroke(1));
     }

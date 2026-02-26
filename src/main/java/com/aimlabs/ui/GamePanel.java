@@ -31,8 +31,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private long lastUpdateTime;
     private Runnable onGameEnd;
 
-    // 虚拟光标 (灵敏度控制)
-    private double virtualX, virtualY;
+    // FPS视角: 相机世界坐标偏移，准星固定屏幕中心
+    private double cameraX, cameraY;
     private int lastRawX, lastRawY;
     private boolean hasLastRaw = false;
 
@@ -56,64 +56,61 @@ public class GamePanel extends JPanel implements ActionListener {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (!running || currentMode == null) return;
-                int vx = (int) virtualX;
-                int vy = (int) virtualY;
-                currentMode.onMousePress(vx, vy, stats);
-                currentMode.onMouseClick(vx, vy, stats);
+                // FPS: 点击始终在屏幕中心(准星位置)
+                int cx = getWidth() / 2;
+                int cy = getHeight() / 2 + 30;
+                currentMode.onMousePress(cx, cy, stats);
+                currentMode.onMouseClick(cx, cy, stats);
                 repaint();
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (!running || currentMode == null) return;
-                currentMode.onMouseRelease((int) virtualX, (int) virtualY, stats);
+                int cx = getWidth() / 2;
+                int cy = getHeight() / 2 + 30;
+                currentMode.onMouseRelease(cx, cy, stats);
             }
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                updateVirtualCursor(e.getX(), e.getY());
+                updateCamera(e.getX(), e.getY());
                 if (running && currentMode != null) {
-                    currentMode.onMouseMove((int) virtualX, (int) virtualY, stats);
+                    int cx = getWidth() / 2;
+                    int cy = getHeight() / 2 + 30;
+                    currentMode.onMouseMove(cx, cy, stats);
                 }
                 repaint();
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                updateVirtualCursor(e.getX(), e.getY());
+                updateCamera(e.getX(), e.getY());
                 if (running && currentMode != null) {
-                    currentMode.onMouseMove((int) virtualX, (int) virtualY, stats);
+                    int cx = getWidth() / 2;
+                    int cy = getHeight() / 2 + 30;
+                    currentMode.onMouseMove(cx, cy, stats);
                 }
                 repaint();
             }
         });
     }
 
-    private int mouseX, mouseY;
-
-    private void updateVirtualCursor(int rawX, int rawY) {
+    private void updateCamera(int rawX, int rawY) {
         if (!running || !hasLastRaw) {
-            // 非游戏状态或首次移动，直接同步
-            virtualX = rawX;
-            virtualY = rawY;
             lastRawX = rawX;
             lastRawY = rawY;
             hasLastRaw = true;
-            mouseX = (int) virtualX;
-            mouseY = (int) virtualY;
             return;
         }
         double sens = config.getSensitivity();
-        double dx = (rawX - lastRawX) * sens;
-        double dy = (rawY - lastRawY) * sens;
-        virtualX = Math.max(0, Math.min(getWidth(), virtualX + dx));
-        virtualY = Math.max(0, Math.min(getHeight(), virtualY + dy));
+        // 鼠标delta转换为相机世界坐标偏移
+        cameraX += (rawX - lastRawX) * sens;
+        cameraY += (rawY - lastRawY) * sens;
         lastRawX = rawX;
         lastRawY = rawY;
-        mouseX = (int) virtualX;
-        mouseY = (int) virtualY;
     }
 
     private Cursor createBlankCursor() {
@@ -133,8 +130,8 @@ public class GamePanel extends JPanel implements ActionListener {
         this.running = true;
         this.lastUpdateTime = System.nanoTime();
         this.hasLastRaw = false;
-        this.virtualX = getWidth() / 2.0;
-        this.virtualY = getHeight() / 2.0;
+        this.cameraX = 0;
+        this.cameraY = 0;
         setCursor(createBlankCursor());
         gameTimer.start();
         countdownTimer.start();
@@ -258,9 +255,9 @@ public class GamePanel extends JPanel implements ActionListener {
             double fov = config.getFov();
             double maxZ = config.getMaxDepth();
 
-            // 投影所有靶标
+            // 投影所有靶标(带相机偏移)
             for (Target t : targets) {
-                t.project(w, h, fov);
+                t.project(w, h, fov, cameraX, cameraY);
             }
 
             // 按深度排序(远的先画)
@@ -277,9 +274,9 @@ public class GamePanel extends JPanel implements ActionListener {
                 drawTarget(g2d, t, maxZ);
             }
 
-            // 准星
+            // 准星 - 固定屏幕中心(FPS风格)
             if (config.isShowCrosshair()) {
-                drawCrosshair(g2d, mouseX, mouseY);
+                drawCrosshair(g2d, w / 2, h / 2 + 30);
             }
         } else if (!running && stats.getTotalShots() > 0) {
             // 结算画面

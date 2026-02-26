@@ -47,14 +47,20 @@ public class Target {
     /**
      * 透视投影: 将3D世界坐标投影到2D屏幕
      * fov控制视野, z越大越远越小
+     * camX/camY为相机世界坐标偏移(FPS视角)
      */
-    public void project(int screenW, int screenH, double fov) {
+    public void project(int screenW, int screenH, double fov, double camX, double camY) {
         double centerX = screenW / 2.0;
         double centerY = screenH / 2.0 + 30; // 偏移HUD
         double scale = fov / (fov + z);
-        screenX = centerX + x * scale;
-        screenY = centerY + y * scale;
+        screenX = centerX + (x - camX) * scale;
+        screenY = centerY + (y - camY) * scale;
         screenSize = size * scale;
+    }
+
+    /** 兼容旧调用 */
+    public void project(int screenW, int screenH, double fov) {
+        project(screenW, screenH, fov, 0, 0);
     }
 
     public void update3D(double dt, double worldW, double worldH, double maxZ) {

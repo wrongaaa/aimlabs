@@ -96,14 +96,15 @@ public class SpeedMode implements ModeHandler {
         double worldW = config.getWorldWidth();
         double worldH = config.getWorldHeight();
         double maxZ = config.getMaxDepth();
-        double zCenter = maxZ * 0.4;
-        double zRange = maxZ * config.getZSpread();
+        double zCenter = maxZ * 0.5;
+        double zRange = maxZ * 0.4 * config.getZSpread();
         double tx, ty, tz;
         int attempts = 0;
         do {
-            tx = -worldW + random.nextDouble() * (2 * worldW);
-            ty = -worldH + random.nextDouble() * (2 * worldH);
-            tz = Math.max(0, Math.min(maxZ, zCenter + (random.nextDouble() - 0.5) * 2 * zRange));
+            tx = (random.nextDouble() - 0.5) * 2 * worldW * 0.75;
+            ty = (random.nextDouble() - 0.5) * 2 * worldH * 0.75;
+            tz = Math.max(maxZ * 0.05, Math.min(maxZ * 0.95,
+                zCenter + (random.nextDouble() - 0.5) * 2 * zRange));
             attempts++;
         } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
         long lifetime = (long) (config.getSpeedTargetLifetime() * 1000);

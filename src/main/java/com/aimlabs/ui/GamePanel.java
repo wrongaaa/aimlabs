@@ -32,8 +32,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private long lastUpdateTime;
     private Runnable onGameEnd;
 
-    // FPS视角: 相机世界坐标偏移，准星固定屏幕中心
-    private double cameraX, cameraY;
+    // FPS视角: 相机固定原点，yaw/pitch旋转，准星固定屏幕中心
+    private double cameraYaw, cameraPitch;
     private int lastRawX, lastRawY;
     private boolean hasLastRaw = false;
 
@@ -132,8 +132,11 @@ public class GamePanel extends JPanel implements ActionListener {
         if (dx == 0 && dy == 0) return; // 忽略warp回中心的事件
 
         double sens = config.getSensitivity();
-        cameraX += dx * sens;
-        cameraY += dy * sens;
+        // 像素差转角度(弧度)
+        cameraYaw += dx * sens * 0.003;
+        cameraPitch += dy * sens * 0.003;
+        // 限制俯仰角防止翻转
+        cameraPitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, cameraPitch));
 
         // 将鼠标锁定在面板中心
         if (robot != null && mouseCaptured) {
@@ -161,8 +164,8 @@ public class GamePanel extends JPanel implements ActionListener {
         this.paused = false;
         this.lastUpdateTime = System.nanoTime();
         this.hasLastRaw = false;
-        this.cameraX = 0;
-        this.cameraY = 0;
+        this.cameraYaw = 0;
+        this.cameraPitch = 0;
         setCursor(createBlankCursor());
         captureMouse();
         gameTimer.start();
@@ -303,9 +306,9 @@ public class GamePanel extends JPanel implements ActionListener {
             double fov = config.getFov();
             double maxZ = config.getMaxDepth();
 
-            // 投影所有靶标(带相机偏移)
+            // 投影所有靶标(带相机旋转)
             for (Target t : targets) {
-                t.project(w, h, fov, cameraX, cameraY);
+                t.project(w, h, fov, cameraYaw, cameraPitch);
             }
 
             // 按深度排序(远的先画)
@@ -516,15 +519,26 @@ public class GamePanel extends JPanel implements ActionListener {
         drawRoom(g2d, w, h);
     }
 
-    /** 将3D世界坐标投影到屏幕坐标 */
+    /** 将3D世界坐标投影到屏幕坐标(带相机旋转) */
     private double[] project3D(double wx, double wy, double wz, int sw, int sh) {
         double fov = config.getFov();
         double cx = sw / 2.0;
         double cy = sh / 2.0 + 30;
-        if (wz <= -fov + 1) wz = -fov + 1; // 防止除零
-        double scale = fov / (fov + wz);
-        double sx = cx + (wx - cameraX) * scale;
-        double sy = cy + (wy - cameraY) * scale;
+
+        // 绕Y轴旋转(yaw)
+        double cosY = Math.cos(cameraYaw), sinY = Math.sin(cameraYaw);
+        double rx = wx * cosY + wz * sinY;
+        double rz = -wx * sinY + wz * cosY;
+
+        // 绕X轴旋转(pitch)
+        double cosP = Math.cos(cameraPitch), sinP = Math.sin(cameraPitch);
+        double ry = wy * cosP - rz * sinP;
+        double rz2 = wy * sinP + rz * cosP;
+
+        if (rz2 <= -fov + 1) rz2 = -fov + 1;
+        double scale = fov / (fov + rz2);
+        double sx = cx + rx * scale;
+        double sy = cy + ry * scale;
         return new double[]{sx, sy, scale};
     }
 

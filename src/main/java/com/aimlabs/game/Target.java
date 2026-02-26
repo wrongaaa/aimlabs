@@ -46,15 +46,26 @@ public class Target {
 
     /**
      * 透视投影: 将3D世界坐标投影到2D屏幕
-     * fov控制视野, z越大越远越小
-     * camX/camY为相机世界坐标偏移(FPS视角)
+     * 相机固定在原点，通过yaw/pitch旋转视角(FPS风格)
      */
-    public void project(int screenW, int screenH, double fov, double camX, double camY) {
+    public void project(int screenW, int screenH, double fov, double yaw, double pitch) {
         double centerX = screenW / 2.0;
         double centerY = screenH / 2.0 + 30; // 偏移HUD
-        double scale = fov / (fov + z);
-        screenX = centerX + (x - camX) * scale;
-        screenY = centerY + (y - camY) * scale;
+
+        // 绕Y轴旋转(yaw)
+        double cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+        double rx = x * cosY + z * sinY;
+        double rz = -x * sinY + z * cosY;
+
+        // 绕X轴旋转(pitch)
+        double cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+        double ry = y * cosP - rz * sinP;
+        double rz2 = y * sinP + rz * cosP;
+
+        if (rz2 <= -fov + 1) rz2 = -fov + 1;
+        double scale = fov / (fov + rz2);
+        screenX = centerX + rx * scale;
+        screenY = centerY + ry * scale;
         screenSize = size * scale;
     }
 

@@ -132,11 +132,12 @@ public class GamePanel extends JPanel implements ActionListener {
         if (dx == 0 && dy == 0) return; // 忽略warp回中心的事件
 
         double sens = config.getSensitivity();
-        // 像素差转角度(弧度)
-        cameraYaw += dx * sens * 0.003;
+        // 像素差转角度(弧度) - yaw取反使鼠标左转对应视角左转
+        cameraYaw -= dx * sens * 0.003;
         cameraPitch += dy * sens * 0.003;
-        // 限制俯仰角防止翻转
-        cameraPitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, cameraPitch));
+        // 限制旋转角度防止穿模
+        cameraYaw = Math.max(-0.45, Math.min(0.45, cameraYaw));
+        cameraPitch = Math.max(-0.35, Math.min(0.35, cameraPitch));
 
         // 将鼠标锁定在面板中心
         if (robot != null && mouseCaptured) {

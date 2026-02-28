@@ -74,20 +74,18 @@ public class Target {
         project(screenW, screenH, fov, 0, 0);
     }
 
-    public void update3D(double dt, double worldW, double worldH, double maxZ) {
+    public void update3D(double dt, double maxX, double halfY, double halfZ) {
         x += velocityX * dt;
         y += velocityY * dt;
         z += velocityZ * dt;
 
-        // 3D边界反弹
-        double halfW = worldW / 2;
-        double halfH = worldH / 2;
-        if (x < -halfW) { x = -halfW; velocityX = Math.abs(velocityX); }
-        if (x > halfW) { x = halfW; velocityX = -Math.abs(velocityX); }
-        if (y < -halfH) { y = -halfH; velocityY = Math.abs(velocityY); }
-        if (y > halfH) { y = halfH; velocityY = -Math.abs(velocityY); }
-        if (z < 0) { z = 0; velocityZ = Math.abs(velocityZ); }
-        if (z > maxZ) { z = maxZ; velocityZ = -Math.abs(velocityZ); }
+        // +X区域内反弹
+        if (x < maxX * 0.1) { x = maxX * 0.1; velocityX = Math.abs(velocityX); }
+        if (x > maxX * 0.9) { x = maxX * 0.9; velocityX = -Math.abs(velocityX); }
+        if (y < -halfY * 0.8) { y = -halfY * 0.8; velocityY = Math.abs(velocityY); }
+        if (y > halfY * 0.8) { y = halfY * 0.8; velocityY = -Math.abs(velocityY); }
+        if (z < -halfZ * 0.8) { z = -halfZ * 0.8; velocityZ = Math.abs(velocityZ); }
+        if (z > halfZ * 0.8) { z = halfZ * 0.8; velocityZ = -Math.abs(velocityZ); }
 
         // 生命周期
         if (lifetime > 0 && System.currentTimeMillis() - spawnTime > lifetime) {
@@ -95,9 +93,11 @@ public class Target {
         }
     }
 
-    // 旧的2D update保持兼容
+    // SpeedMode兼容: 只检查生命周期
     public void update(double dt, int areaWidth, int areaHeight) {
-        update3D(dt, areaWidth, areaHeight, 0);
+        if (lifetime > 0 && System.currentTimeMillis() - spawnTime > lifetime) {
+            alive = false;
+        }
     }
 
     /** 基于投影后的屏幕坐标判定点击 */
@@ -133,11 +133,11 @@ public class Target {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /** 根据深度计算暗化系数 (0~1, 越远越暗) */
-    public float getDepthDim(double maxZ) {
-        if (maxZ <= 0) return 1.0f;
-        float ratio = (float)(z / maxZ);
-        // 用平方曲线让远处暗得更快
+    /** 根据到原点距离计算暗化系数 (0~1, 越远越暗) */
+    public float getDepthDim(double maxDist) {
+        if (maxDist <= 0) return 1.0f;
+        double dist = Math.sqrt(x*x + y*y + z*z);
+        float ratio = (float)(dist / maxDist);
         return Math.max(0.15f, 1.0f - ratio * ratio * 0.85f);
     }
 

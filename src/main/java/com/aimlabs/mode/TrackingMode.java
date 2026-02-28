@@ -33,9 +33,9 @@ public class TrackingMode implements ModeHandler {
         this.height = height;
         double worldW = config.getWorldWidth();
         double worldH = config.getWorldHeight();
-        double maxZ = config.getMaxDepth();
+        double halfZ = config.getMaxDepth() / 2.0;
         for (Target t : targets) {
-            t.update3D(dt * config.getTrackSpeed() * 60, worldW, worldH, maxZ);
+            t.update3D(dt * config.getTrackSpeed() * 60, worldW, worldH, halfZ);
         }
     }
 
@@ -83,17 +83,17 @@ public class TrackingMode implements ModeHandler {
         double minDist = size * config.getTargetDensity() * 0.3;
         double worldW = config.getWorldWidth();
         double worldH = config.getWorldHeight();
-        double maxZ = config.getMaxDepth();
-        double zCenter = maxZ * 0.5;
-        double zRange = maxZ * 0.4 * config.getZSpread();
+        double halfZ = config.getMaxDepth() / 2.0;
+        double xCenter = worldW * 0.5;
+        double xRange = worldW * 0.35 * config.getZSpread();
         for (int i = 0; i < count; i++) {
             double tx, ty, tz;
             int attempts = 0;
             do {
-                tx = (random.nextDouble() - 0.5) * 2 * worldW * 0.75;
-                ty = (random.nextDouble() - 0.5) * 2 * worldH * 0.75;
-                tz = Math.max(maxZ * 0.05, Math.min(maxZ * 0.95,
-                    zCenter + (random.nextDouble() - 0.5) * 2 * zRange));
+                tx = Math.max(worldW * 0.1, Math.min(worldW * 0.9,
+                    xCenter + (random.nextDouble() - 0.5) * 2 * xRange));
+                ty = (random.nextDouble() - 0.5) * 2 * worldH * 0.6;
+                tz = (random.nextDouble() - 0.5) * 2 * halfZ * 0.6;
                 attempts++;
             } while (isTooClose(tx, ty, tz, minDist) && attempts < 50);
             Target t = new Target(tx, ty, tz, size, config.getTargetColor());
@@ -101,7 +101,6 @@ public class TrackingMode implements ModeHandler {
             double speed = 2 + random.nextDouble() * 2;
             t.setVelocityX(Math.cos(angle) * speed);
             t.setVelocityY(Math.sin(angle) * speed);
-            // Add Z velocity for 3D movement
             double speedZ = 1 + random.nextDouble() * 2;
             t.setVelocityZ((random.nextBoolean() ? 1 : -1) * speedZ);
             targets.add(t);

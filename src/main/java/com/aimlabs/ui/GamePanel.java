@@ -135,9 +135,8 @@ public class GamePanel extends JPanel implements ActionListener {
         // 像素差转角度(弧度) - yaw取反使鼠标左转对应视角左转
         cameraYaw -= dx * sens * 0.003;
         cameraPitch += dy * sens * 0.003;
-        // 限制旋转角度防止穿模
-        cameraYaw = Math.max(-0.45, Math.min(0.45, cameraYaw));
-        cameraPitch = Math.max(-0.35, Math.min(0.35, cameraPitch));
+        // pitch限制防翻转，yaw不限制(自由旋转)
+        cameraPitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, cameraPitch));
 
         // 将鼠标锁定在面板中心
         if (robot != null && mouseCaptured) {
@@ -165,7 +164,7 @@ public class GamePanel extends JPanel implements ActionListener {
         this.paused = false;
         this.lastUpdateTime = System.nanoTime();
         this.hasLastRaw = false;
-        this.cameraYaw = 0;
+        this.cameraYaw = -Math.PI / 2; // 初始朝+X方向
         this.cameraPitch = 0;
         setCursor(createBlankCursor());
         captureMouse();
@@ -565,91 +564,91 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     private void drawRoom(Graphics2D g2d, int w, int h) {
-        double rW = config.getWorldWidth();   // 房间半宽
-        double rH = config.getWorldHeight();  // 房间半高
-        double rD = config.getMaxDepth();     // 房间深度
-        double zNear = -rD * 0.3;            // 房间延伸到相机后方，营造封闭感
+        double rX = config.getWorldWidth();
+        double rY = config.getWorldHeight();
+        double rZ = config.getMaxDepth() / 2.0;
 
-        // === 后墙 (z = rD) ===
-        g2d.setColor(new Color(22, 22, 32));
-        fillQuad3D(g2d, w, h,
-            -rW, -rH, rD,  rW, -rH, rD,  rW, rH, rD,  -rW, rH, rD);
-
-        // 后墙网格线
         Color gc = config.getGridColor();
+        int gridN = 8;
+
+        // === +X墙 (靶标墙，初始朝向) ===
+        g2d.setColor(new Color(22, 22, 32));
+        fillQuad3D(g2d,w,h, rX,-rY,-rZ, rX,-rY,rZ, rX,rY,rZ, rX,rY,-rZ);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 80));
         g2d.setStroke(new BasicStroke(0.5f));
-        int gridN = 8;
         for (int i = 0; i <= gridN; i++) {
             double t = -1.0 + 2.0 * i / gridN;
-            drawLine3D(g2d, w, h, t*rW, -rH, rD, t*rW, rH, rD);
-            drawLine3D(g2d, w, h, -rW, t*rH, rD, rW, t*rH, rD);
+            drawLine3D(g2d,w,h, rX, t*rY, -rZ, rX, t*rY, rZ);
+            drawLine3D(g2d,w,h, rX, -rY, t*rZ, rX, rY, t*rZ);
         }
 
-        // === 地板 (y = rH) ===
+        // === -X墙 (背后) ===
+        g2d.setColor(new Color(22, 22, 32));
+        fillQuad3D(g2d,w,h, -rX,-rY,-rZ, -rX,-rY,rZ, -rX,rY,rZ, -rX,rY,-rZ);
+        g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 40));
+        for (int i = 0; i <= gridN; i++) {
+            double t = -1.0 + 2.0 * i / gridN;
+            drawLine3D(g2d,w,h, -rX, t*rY, -rZ, -rX, t*rY, rZ);
+            drawLine3D(g2d,w,h, -rX, -rY, t*rZ, -rX, rY, t*rZ);
+        }
+
+        // === 地板 (y = rY) ===
         g2d.setColor(new Color(35, 38, 48));
-        fillQuad3D(g2d, w, h, -rW, rH, zNear,  rW, rH, zNear,  rW, rH, rD,  -rW, rH, rD);
+        fillQuad3D(g2d,w,h, -rX,rY,-rZ, rX,rY,-rZ, rX,rY,rZ, -rX,rY,rZ);
         g2d.setColor(new Color(gc.getRed(), gc.getGreen(), gc.getBlue(), 60));
         g2d.setStroke(new BasicStroke(0.7f));
         for (int i = 0; i <= gridN; i++) {
             double t = -1.0 + 2.0 * i / gridN;
-            drawLine3D(g2d, w, h, t*rW, rH, zNear, t*rW, rH, rD);
-        }
-        int depthLines = 12;
-        for (int i = 0; i <= depthLines; i++) {
-            double z = zNear + (rD - zNear) * i / depthLines;
-            drawLine3D(g2d, w, h, -rW, rH, z, rW, rH, z);
+            drawLine3D(g2d,w,h, t*rX, rY, -rZ, t*rX, rY, rZ);
+            drawLine3D(g2d,w,h, -rX, rY, t*rZ, rX, rY, t*rZ);
         }
 
-        // === 天花板 (y = -rH) ===
+        // === 天花板 (y = -rY) ===
         g2d.setColor(new Color(25, 25, 35));
-        fillQuad3D(g2d, w, h, -rW, -rH, zNear,  rW, -rH, zNear,  rW, -rH, rD,  -rW, -rH, rD);
+        fillQuad3D(g2d,w,h, -rX,-rY,-rZ, rX,-rY,-rZ, rX,-rY,rZ, -rX,-rY,rZ);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 40));
         g2d.setStroke(new BasicStroke(0.5f));
-        for (int i = 0; i <= depthLines; i++) {
-            double z = zNear + (rD - zNear) * i / depthLines;
-            drawLine3D(g2d, w, h, -rW, -rH, z, rW, -rH, z);
+        for (int i = 0; i <= gridN; i++) {
+            double t = -1.0 + 2.0 * i / gridN;
+            drawLine3D(g2d,w,h, t*rX, -rY, -rZ, t*rX, -rY, rZ);
+            drawLine3D(g2d,w,h, -rX, -rY, t*rZ, rX, -rY, t*rZ);
         }
 
-        // === 左墙 (x = -rW) ===
+        // === +Z墙 ===
         g2d.setColor(new Color(30, 32, 42));
-        fillQuad3D(g2d, w, h, -rW, -rH, zNear,  -rW, -rH, rD,  -rW, rH, rD,  -rW, rH, zNear);
+        fillQuad3D(g2d,w,h, -rX,-rY,rZ, rX,-rY,rZ, rX,rY,rZ, -rX,rY,rZ);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 50));
-        for (int i = 0; i <= depthLines; i++) {
-            double z = zNear + (rD - zNear) * i / depthLines;
-            drawLine3D(g2d, w, h, -rW, -rH, z, -rW, rH, z);
-        }
-        for (int i = 0; i <= 4; i++) {
-            double t = -1.0 + 2.0 * i / 4;
-            drawLine3D(g2d, w, h, -rW, t*rH, zNear, -rW, t*rH, rD);
+        for (int i = 0; i <= gridN; i++) {
+            double t = -1.0 + 2.0 * i / gridN;
+            drawLine3D(g2d,w,h, t*rX, -rY, rZ, t*rX, rY, rZ);
+            drawLine3D(g2d,w,h, -rX, t*rY, rZ, rX, t*rY, rZ);
         }
 
-        // === 右墙 (x = rW) ===
+        // === -Z墙 ===
         g2d.setColor(new Color(30, 32, 42));
-        fillQuad3D(g2d, w, h, rW, -rH, zNear,  rW, -rH, rD,  rW, rH, rD,  rW, rH, zNear);
+        fillQuad3D(g2d,w,h, -rX,-rY,-rZ, rX,-rY,-rZ, rX,rY,-rZ, -rX,rY,-rZ);
         g2d.setColor(new Color(gc.getRed()/2, gc.getGreen()/2, gc.getBlue()/2, 50));
-        for (int i = 0; i <= depthLines; i++) {
-            double z = zNear + (rD - zNear) * i / depthLines;
-            drawLine3D(g2d, w, h, rW, -rH, z, rW, rH, z);
-        }
-        for (int i = 0; i <= 4; i++) {
-            double t = -1.0 + 2.0 * i / 4;
-            drawLine3D(g2d, w, h, rW, t*rH, zNear, rW, t*rH, rD);
+        for (int i = 0; i <= gridN; i++) {
+            double t = -1.0 + 2.0 * i / gridN;
+            drawLine3D(g2d,w,h, t*rX, -rY, -rZ, t*rX, rY, -rZ);
+            drawLine3D(g2d,w,h, -rX, t*rY, -rZ, rX, t*rY, -rZ);
         }
 
-        // === 房间边框 - 远面+连接线(无近面，相机在房间内) ===
+        // === 12条棱线 ===
         g2d.setColor(new Color(gc.getRed(), gc.getGreen(), gc.getBlue(), 100));
         g2d.setStroke(new BasicStroke(1.2f));
-        // 远面4条
-        drawLine3D(g2d,w,h, -rW,-rH,rD, rW,-rH,rD);
-        drawLine3D(g2d,w,h, rW,-rH,rD, rW,rH,rD);
-        drawLine3D(g2d,w,h, rW,rH,rD, -rW,rH,rD);
-        drawLine3D(g2d,w,h, -rW,rH,rD, -rW,-rH,rD);
-        // 连接4条
-        drawLine3D(g2d,w,h, -rW,-rH,zNear, -rW,-rH,rD);
-        drawLine3D(g2d,w,h, rW,-rH,zNear, rW,-rH,rD);
-        drawLine3D(g2d,w,h, rW,rH,zNear, rW,rH,rD);
-        drawLine3D(g2d,w,h, -rW,rH,zNear, -rW,rH,rD);
+        drawLine3D(g2d,w,h, -rX,-rY,-rZ, rX,-rY,-rZ);
+        drawLine3D(g2d,w,h, -rX,-rY,rZ, rX,-rY,rZ);
+        drawLine3D(g2d,w,h, -rX,rY,-rZ, rX,rY,-rZ);
+        drawLine3D(g2d,w,h, -rX,rY,rZ, rX,rY,rZ);
+        drawLine3D(g2d,w,h, -rX,-rY,-rZ, -rX,rY,-rZ);
+        drawLine3D(g2d,w,h, -rX,-rY,rZ, -rX,rY,rZ);
+        drawLine3D(g2d,w,h, rX,-rY,-rZ, rX,rY,-rZ);
+        drawLine3D(g2d,w,h, rX,-rY,rZ, rX,rY,rZ);
+        drawLine3D(g2d,w,h, -rX,-rY,-rZ, -rX,-rY,rZ);
+        drawLine3D(g2d,w,h, -rX,rY,-rZ, -rX,rY,rZ);
+        drawLine3D(g2d,w,h, rX,-rY,-rZ, rX,-rY,rZ);
+        drawLine3D(g2d,w,h, rX,rY,-rZ, rX,rY,rZ);
 
         g2d.setStroke(new BasicStroke(1));
     }

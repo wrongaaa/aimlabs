@@ -19,6 +19,7 @@ public class Target {
 
     // 投影缓存
     private double screenX, screenY, screenSize;
+    private double cameraSpaceZ; // 相机空间深度，用于排序
 
     public Target(double x, double y, double size, Color color) {
         this(x, y, 0, size, color);
@@ -63,6 +64,7 @@ public class Target {
         double rz2 = y * sinP + rz * cosP;
 
         if (rz2 <= -fov + 1) rz2 = -fov + 1;
+        cameraSpaceZ = rz2; // 缓存相机空间深度，用于排序
         double scale = fov / (fov + rz2);
         screenX = centerX + rx * scale;
         screenY = centerY + ry * scale;
@@ -163,6 +165,7 @@ public class Target {
     public double getScreenX() { return screenX; }
     public double getScreenY() { return screenY; }
     public double getScreenSize() { return screenSize; }
+    public double getCameraSpaceZ() { return cameraSpaceZ; }
     public double getVelocityX() { return velocityX; }
     public void setVelocityX(double vx) { this.velocityX = vx; }
     public double getVelocityY() { return velocityY; }
